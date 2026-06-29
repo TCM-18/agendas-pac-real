@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Triagem — SLMandic</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  :root {
+    --bg:#F5F7FC; --navy:#1A2459; --navy-light:#253070; --gold:#F5C518;
+    --red:#E53E3E; --orange:#ED8936; --green:#38A169; --blue:#3182CE;
+    --gray:#718096; --border:#E2E8F0; --white:#FFFFFF; --card:#FFFFFF;
+    --text:#1A2459; --text-muted:#718096;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  .header{background:var(--navy);padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(26,36,89,0.18);}
+  .header-left{display:flex;align-items:center;gap:14px;}
+  .logo-mark{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--gold) 0%,#E5A800 100%);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--navy);font-size:16px;}
+  .header-title{color:white;font-size:18px;font-weight:600;}
+  .header-subtitle{color:rgba(255,255,255,0.55);font-size:12px;margin-top:1px;}
+  .last-update{color:rgba(255,255,255,0.5);font-size:12px;}
+  .tabs-bar{background:var(--white);border-bottom:2px solid var(--border);padding:0 32px;display:flex;gap:0;}
+  .tab-btn{padding:14px 22px;font-size:13px;font-weight:600;color:var(--text-muted);border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.15s;font-family:inherit;white-space:nowrap;}
+  .tab-btn:hover{color:var(--navy);}
+  .tab-btn.active{color:var(--navy);border-bottom-color:var(--gold);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  .filters-bar{background:var(--white);border-bottom:1px solid var(--border);padding:12px 32px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;}
+  .filter-group{display:flex;align-items:center;gap:8px;}
+  .filter-group label{font-size:12px;font-weight:600;color:var(--navy);white-space:nowrap;}
+  .filter-group select{border:1.5px solid var(--border);border-radius:8px;padding:6px 28px 6px 10px;font-size:13px;color:var(--text);background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%231A2459'/%3E%3C/svg%3E") no-repeat right 10px center;-webkit-appearance:none;cursor:pointer;min-width:130px;font-family:inherit;}
+  .filter-group select:focus{outline:none;border-color:var(--navy);}
+  .btn-reset{margin-left:auto;background:transparent;border:1.5px solid var(--border);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--gray);cursor:pointer;font-family:inherit;transition:all 0.15s;}
+  .btn-reset:hover{border-color:var(--navy);color:var(--navy);}
+  .main{padding:24px 32px;max-width:1400px;margin:0 auto;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+  .kpi-card{background:var(--card);border-radius:12px;padding:20px 22px;border:1px solid var(--border);position:relative;overflow:hidden;}
+  .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+  .kpi-card.realized::before{background:var(--navy);}
+  .kpi-card.falta::before{background:var(--red);}
+  .kpi-card.cancelado::before{background:var(--orange);}
+  .kpi-card.agendado::before{background:var(--gold);}
+  .kpi-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;}
+  .kpi-value{font-size:32px;font-weight:700;color:var(--navy);line-height:1;}
+  .kpi-pct{font-size:13px;font-weight:600;margin-top:6px;}
+  .kpi-card.realized .kpi-pct{color:var(--green);}
+  .kpi-card.falta .kpi-pct{color:var(--red);}
+  .kpi-card.cancelado .kpi-pct{color:var(--orange);}
+  .kpi-card.agendado .kpi-pct{color:var(--navy);}
+  .kpi-sub{font-size:11px;color:var(--text-muted);margin-top:2px;}
+  .charts-row{display:grid;gap:16px;margin-bottom:16px;}
+  .charts-row.two{grid-template-columns:1.6fr 1fr;}
+  .charts-row.half{grid-template-columns:1fr 1fr;}
+  .charts-row.full{grid-template-columns:1fr;}
+  .chart-card{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:20px 22px;}
+  .chart-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px;}
+  .chart-subtitle{font-size:11px;color:var(--text-muted);margin-bottom:16px;}
+  .ranking-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .ranking-table th{text-align:left;padding:8px 10px;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap;}
+  .ranking-table td{padding:9px 10px;border-bottom:1px solid #F0F4FA;vertical-align:middle;}
+  .ranking-table tr:last-child td{border-bottom:none;}
+  .ranking-table tr:hover td{background:var(--bg);}
+  .rank-num{font-weight:700;color:var(--text-muted);font-size:11px;}
+  .curso-tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap;}
+  .bar-mini{background:var(--border);border-radius:3px;height:6px;overflow:hidden;}
+  .bar-mini-fill{height:100%;border-radius:3px;}
+  .heatmap-wrap{overflow-x:auto;}
+  .heatmap-table{border-collapse:collapse;font-size:11px;min-width:100%;}
+  .heatmap-table th{padding:4px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);white-space:nowrap;}
+  .heatmap-table th.row-header{text-align:left;font-size:11px;color:var(--navy);min-width:140px;}
+  .heatmap-table td{padding:5px 8px;text-align:center;font-size:10px;font-weight:600;border-radius:3px;min-width:44px;}
+  .heatmap-table td.row-header{text-align:left;font-size:11px;font-weight:600;color:var(--navy);background:transparent!important;padding-right:14px;}
+  .section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:12px;margin-top:8px;display:flex;align-items:center;gap:8px;}
+  .section-label::after{content:'';flex:1;height:1px;background:var(--border);}
+  .turma-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
+  .turma-pill{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;transition:all 0.15s;font-family:inherit;}
+  .turma-pill:hover{border-color:var(--navy);color:var(--navy);}
+  .turma-pill.active{background:var(--navy);color:white;border-color:var(--navy);}
+  .turma-pill.all-pill.active{background:var(--gold);color:var(--navy);border-color:var(--gold);}
+  .empty-state{text-align:center;padding:48px 24px;color:var(--text-muted);}
+  .empty-state .icon{font-size:40px;margin-bottom:12px;}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;}
+  .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);}
+  .legend-dot{width:10px;height:10px;border-radius:50%;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo-mark">SL</div>
+    <div>
+      <div class="header-title">Dashboard de Atendimentos</div>
+      <div class="header-subtitle">São Leopoldo Mandic · Triagem &amp; Práticas Clínicas</div>
+    </div>
+  </div>
+  <div class="last-update">Base limpa · Jun/2026</div>
+</div>
+
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="switchTab('geral',this)">&#128202; Visão Geral</button>
+  <button class="tab-btn" onclick="switchTab('turma',this)">&#127891; Por Curso &amp; Turma</button>
+</div>
+
+<!-- TAB GERAL -->
+<div id="tab-geral" class="tab-panel active">
+  <div class="filters-bar">
+    <div class="filter-group"><label>Unidade</label>
+      <select id="fUnidade" onchange="updateGeral()">
+        <option value="">Todas</option>
+        <option>Brasília</option><option>Campinas</option><option>Online</option><option>São Paulo</option>
+      </select>
+    </div>
+    <div class="filter-group"><label>Curso</label>
+      <select id="fCurso" onchange="updateGeral()"><option value="">Todos</option></select>
+    </div>
+    <div class="filter-group"><label>De</label>
+      <select id="fMesStart" onchange="updateGeral()"><option value="">Início</option></select>
+    </div>
+    <div class="filter-group"><label>Até</label>
+      <select id="fMesEnd" onchange="updateGeral()"><option value="">Fim</option></select>
+    </div>
+    <button class="btn-reset" onclick="resetGeral()">&#8635; Limpar</button>
+  </div>
+  <div class="main">
+    <div class="kpi-grid">
+      <div class="kpi-card realized"><div class="kpi-label">Consultas Realizadas</div><div class="kpi-value" id="kpiR">—</div><div class="kpi-pct" id="kpiRPct">—</div><div class="kpi-sub">do total ocorrido</div></div>
+      <div class="kpi-card falta"><div class="kpi-label">Faltas</div><div class="kpi-value" id="kpiF">—</div><div class="kpi-pct" id="kpiFPct">—</div><div class="kpi-sub">do total ocorrido</div></div>
+      <div class="kpi-card cancelado"><div class="kpi-label">Cancelamentos</div><div class="kpi-value" id="kpiX">—</div><div class="kpi-pct" id="kpiXPct">—</div><div class="kpi-sub">do total ocorrido</div></div>
+      <div class="kpi-card agendado"><div class="kpi-label">Agendados / Pendentes</div><div class="kpi-value" id="kpiA">—</div><div class="kpi-pct" id="kpiAPct">—</div><div class="kpi-sub">consultas futuras</div></div>
+    </div>
+    <div class="section-label">Desempenho por Curso</div>
+    <div class="charts-row two">
+      <div class="chart-card">
+        <div class="chart-title">Consultas Realizadas por Curso</div>
+        <div class="chart-subtitle">Total de atendimentos efetivados</div>
+        <div style="position:relative;height:280px"><canvas id="chartBarCurso"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Distribuição de Status</div>
+        <div class="chart-subtitle">Proporção geral no período</div>
+        <div style="position:relative;height:200px;max-width:200px;margin:0 auto"><canvas id="chartDonut"></canvas></div>
+        <div class="legend" style="justify-content:center;margin-top:14px">
+          <div class="legend-item"><div class="legend-dot" style="background:#1A2459"></div>Realizado</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#E53E3E"></div>Falta</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ED8936"></div>Cancelado</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#F5C518"></div>Agendado</div>
+        </div>
+      </div>
+    </div>
+    <div class="charts-row full">
+      <div class="chart-card">
+        <div class="chart-title">% Realizado, Falta e Cancelamento por Curso</div>
+        <div class="chart-subtitle">Composição percentual (excluindo pendentes)</div>
+        <div style="position:relative;height:260px"><canvas id="chartStacked"></canvas></div>
+      </div>
+    </div>
+    <div class="section-label">Evolução Temporal e Ranking</div>
+    <div class="charts-row two">
+      <div class="chart-card">
+        <div class="chart-title">Tendência Mensal</div>
+        <div class="chart-subtitle">Realizados, faltas, cancelamentos e agendamentos</div>
+        <div style="position:relative;height:260px"><canvas id="chartLine"></canvas></div>
+      </div>
+      <div class="chart-card" style="overflow:hidden">
+        <div class="chart-title">Ranking por Curso</div>
+        <div class="chart-subtitle">Ordenado por % de realização</div>
+        <div style="overflow-y:auto;max-height:300px">
+          <table class="ranking-table"><thead><tr><th>#</th><th>Curso</th><th>Realizados</th><th>% Real.</th><th>% Falta</th><th>% Cancel.</th><th>Barra</th></tr></thead>
+          <tbody id="rankingBody"></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="section-label">Mapa de Calor</div>
+    <div class="charts-row full">
+      <div class="chart-card">
+        <div class="chart-title">Heatmap — Realizados por Curso × Mês</div>
+        <div class="chart-subtitle">Intensidade = volume de consultas realizadas</div>
+        <div class="heatmap-wrap"><table class="heatmap-table" id="heatmapTable"></table></div>
+      </div>
+    </div>
+    <div class="section-label">Volume por Unidade</div>
+    <div class="charts-row full">
+      <div class="chart-card">
+        <div class="chart-title">Realizados por Unidade e Curso</div>
+        <div class="chart-subtitle">Distribuição entre unidades</div>
+        <div style="position:relative;height:220px"><canvas id="chartUnidade"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB TURMA -->
+<div id="tab-turma" class="tab-panel">
+  <div class="filters-bar">
+    <div class="filter-group"><label>Unidade</label>
+      <select id="tUnidade" onchange="updateTurmaFilters()">
+        <option value="">Todas</option>
+        <option>Brasília</option><option>Campinas</option><option>Online</option><option>São Paulo</option>
+      </select>
+    </div>
+    <div class="filter-group"><label>Curso</label>
+      <select id="tCurso" onchange="updateTurmaFilters()"><option value="">Selecione um curso</option></select>
+    </div>
+    <div class="filter-group"><label>De</label>
+      <select id="tMesStart" onchange="updateTurma()"><option value="">Início</option></select>
+    </div>
+    <div class="filter-group"><label>Até</label>
+      <select id="tMesEnd" onchange="updateTurma()"><option value="">Fim</option></select>
+    </div>
+    <button class="btn-reset" onclick="resetTurma()">&#8635; Limpar</button>
+  </div>
+  <div class="main">
+    <div id="turmaSection" style="display:none">
+      <div class="section-label">Selecionar Turma</div>
+      <div class="turma-pills" id="turmaPills"></div>
+      <div class="kpi-grid">
+        <div class="kpi-card realized"><div class="kpi-label">Realizados</div><div class="kpi-value" id="tKpiR">—</div><div class="kpi-pct" id="tKpiRPct">—</div><div class="kpi-sub">do total ocorrido</div></div>
+        <div class="kpi-card falta"><div class="kpi-label">Faltas</div><div class="kpi-value" id="tKpiF">—</div><div class="kpi-pct" id="tKpiFPct">—</div><div class="kpi-sub">do total ocorrido</div></div>
+        <div class="kpi-card cancelado"><div class="kpi-label">Cancelamentos</div><div class="kpi-value" id="tKpiX">—</div><div class="kpi-pct" id="tKpiXPct">—</div><div class="kpi-sub">do total ocorrido</div></div>
+        <div class="kpi-card agendado"><div class="kpi-label">Agendados</div><div class="kpi-value" id="tKpiA">—</div><div class="kpi-pct" id="tKpiAPct">—</div><div class="kpi-sub">consultas futuras</div></div>
+      </div>
+      <div class="section-label">Comparativo entre Turmas</div>
+      <div class="charts-row half">
+        <div class="chart-card">
+          <div class="chart-title">Realizados por Turma</div>
+          <div class="chart-subtitle">Volume absoluto por turma</div>
+          <div style="position:relative;height:260px"><canvas id="tChartBar"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">% por Turma</div>
+          <div class="chart-subtitle">Taxa de realização, falta e cancelamento</div>
+          <div style="position:relative;height:260px"><canvas id="tChartStacked"></canvas></div>
+        </div>
+      </div>
+      <div class="charts-row two">
+        <div class="chart-card">
+          <div class="chart-title">Tendência Mensal</div>
+          <div class="chart-subtitle" id="tLineSubtitle">Evolução ao longo do tempo</div>
+          <div style="position:relative;height:260px"><canvas id="tChartLine"></canvas></div>
+        </div>
+        <div class="chart-card" style="overflow:hidden">
+          <div class="chart-title">Ranking de Turmas</div>
+          <div class="chart-subtitle">Ordenado por % de realização</div>
+          <div style="overflow-y:auto;max-height:300px">
+            <table class="ranking-table"><thead><tr><th>#</th><th>Turma</th><th>Realizados</th><th>% Real.</th><th>% Falta</th><th>% Cancel.</th><th>Barra</th></tr></thead>
+            <tbody id="tRankingBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+      <div class="section-label">Heatmap Turma × Mês</div>
+      <div class="charts-row full">
+        <div class="chart-card">
+          <div class="chart-title">Realizados por Turma e Mês</div>
+          <div class="chart-subtitle">Intensidade = volume de consultas realizadas</div>
+          <div class="heatmap-wrap"><table class="heatmap-table" id="tHeatmap"></table></div>
+        </div>
+      </div>
+    </div>
+    <div id="turmaEmpty" class="empty-state">
+      <div class="icon">&#127891;</div>
+      <p>Selecione um <strong>Curso</strong> no filtro acima para visualizar a análise por turma.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+var RAW = [{"u": "São Paulo", "m": "2024-06", "c": "Dermatologia", "t": "2", "r": 110, "f": 17, "x": 23, "a": 0}, {"u": "São Paulo", "m": "2024-07", "c": "Dermatologia", "t": "2", "r": 66, "f": 7, "x": 17, "a": 0}, {"u": "São Paulo", "m": "2024-08", "c": "Dermatologia", "t": "3", "r": 86, "f": 9, "x": 19, "a": 2}, {"u": "São Paulo", "m": "2024-08", "c": "Dermatologia", "t": "2", "r": 94, "f": 16, "x": 27, "a": 0}, {"u": "São Paulo", "m": "2024-09", "c": "Dermatologia", "t": "3", "r": 57, "f": 13, "x": 19, "a": 0}, {"u": "São Paulo", "m": "2024-09", "c": "Dermatologia", "t": "2", "r": 35, "f": 1, "x": 29, "a": 0}, {"u": "Campinas", "m": "2024-09", "c": "Oftalmologia", "t": "1", "r": 41, "f": 17, "x": 12, "a": 1}, {"u": "São Paulo", "m": "2024-10", "c": "Dermatologia", "t": "3", "r": 53, "f": 3, "x": 24, "a": 0}, {"u": "São Paulo", "m": "2024-10", "c": "Dermatologia", "t": "2", "r": 73, "f": 14, "x": 33, "a": 3}, {"u": "Campinas", "m": "2024-10", "c": "Oftalmologia", "t": "1", "r": 57, "f": 10, "x": 12, "a": 0}, {"u": "São Paulo", "m": "2024-11", "c": "Dermatologia", "t": "3", "r": 29, "f": 1, "x": 12, "a": 0}, {"u": "São Paulo", "m": "2024-11", "c": "Dermatologia", "t": "2", "r": 88, "f": 4, "x": 33, "a": 0}, {"u": "Campinas", "m": "2024-11", "c": "Oftalmologia", "t": "1", "r": 65, "f": 23, "x": 19, "a": 0}, {"u": "Campinas", "m": "2024-12", "c": "Dermatologia", "t": "2", "r": 46, "f": 12, "x": 6, "a": 0}, {"u": "Campinas", "m": "2024-12", "c": "Oftalmologia", "t": "1", "r": 60, "f": 22, "x": 17, "a": 0}, {"u": "São Paulo", "m": "2024-12", "c": "Dermatologia", "t": "3", "r": 53, "f": 9, "x": 29, "a": 0}, {"u": "Campinas", "m": "2025-01", "c": "Dermatologia", "t": "2", "r": 62, "f": 4, "x": 21, "a": 0}, {"u": "São Paulo", "m": "2025-01", "c": "Dermatologia", "t": "4", "r": 85, "f": 9, "x": 42, "a": 1}, {"u": "São Paulo", "m": "2025-01", "c": "Dermatologia", "t": "3", "r": 83, "f": 7, "x": 38, "a": 2}, {"u": "Campinas", "m": "2025-01", "c": "Oftalmologia", "t": "1", "r": 50, "f": 14, "x": 9, "a": 0}, {"u": "São Paulo", "m": "2025-01", "c": "Dermatologia", "t": "2", "r": 95, "f": 8, "x": 24, "a": 0}, {"u": "São Paulo", "m": "2025-02", "c": "Dermatologia", "t": "4", "r": 50, "f": 4, "x": 5, "a": 0}, {"u": "São Paulo", "m": "2025-02", "c": "Dermatologia", "t": "3", "r": 84, "f": 12, "x": 29, "a": 3}, {"u": "Campinas", "m": "2025-02", "c": "Dermatologia", "t": "2", "r": 82, "f": 20, "x": 6, "a": 0}, {"u": "São Paulo", "m": "2025-02", "c": "Dermatologia", "t": "2", "r": 82, "f": 16, "x": 21, "a": 1}, {"u": "Campinas", "m": "2025-02", "c": "Oftalmologia", "t": "1", "r": 71, "f": 16, "x": 17, "a": 0}, {"u": "São Paulo", "m": "2025-03", "c": "Dermatologia", "t": "4", "r": 79, "f": 9, "x": 20, "a": 3}, {"u": "São Paulo", "m": "2025-03", "c": "Dermatologia", "t": "3", "r": 83, "f": 12, "x": 32, "a": 5}, {"u": "Campinas", "m": "2025-03", "c": "Dermatologia", "t": "2", "r": 58, "f": 7, "x": 4, "a": 0}, {"u": "Campinas", "m": "2025-03", "c": "Oftalmologia", "t": "1", "r": 62, "f": 17, "x": 11, "a": 1}, {"u": "São Paulo", "m": "2025-03", "c": "Dermatologia", "t": "2", "r": 31, "f": 1, "x": 30, "a": 0}, {"u": "Campinas", "m": "2025-04", "c": "Dermatologia", "t": "2", "r": 73, "f": 16, "x": 13, "a": 1}, {"u": "São Paulo", "m": "2025-04", "c": "Dermatologia", "t": "5", "r": 81, "f": 11, "x": 18, "a": 0}, {"u": "São Paulo", "m": "2025-04", "c": "Dermatologia", "t": "4", "r": 42, "f": 7, "x": 12, "a": 5}, {"u": "São Paulo", "m": "2025-04", "c": "Oftalmologia", "t": "2", "r": 40, "f": 4, "x": 7, "a": 3}, {"u": "São Paulo", "m": "2025-04", "c": "Dermatologia", "t": "3", "r": 71, "f": 11, "x": 22, "a": 1}, {"u": "São Paulo", "m": "2025-04", "c": "Dermatologia", "t": "2", "r": 59, "f": 2, "x": 14, "a": 2}, {"u": "Campinas", "m": "2025-04", "c": "Oftalmologia", "t": "1", "r": 81, "f": 19, "x": 5, "a": 1}, {"u": "São Paulo", "m": "2025-05", "c": "Dermatologia", "t": "4", "r": 94, "f": 4, "x": 19, "a": 1}, {"u": "Campinas", "m": "2025-05", "c": "Dermatologia", "t": "2", "r": 83, "f": 15, "x": 12, "a": 0}, {"u": "São Paulo", "m": "2025-05", "c": "Dermatologia", "t": "5", "r": 53, "f": 0, "x": 8, "a": 0}, {"u": "São Paulo", "m": "2025-05", "c": "Oftalmologia", "t": "2", "r": 51, "f": 6, "x": 20, "a": 2}, {"u": "São Paulo", "m": "2025-05", "c": "Dermatologia", "t": "3", "r": 53, "f": 5, "x": 27, "a": 1}, {"u": "Campinas", "m": "2025-05", "c": "Oftalmologia", "t": "1", "r": 61, "f": 19, "x": 5, "a": 0}, {"u": "São Paulo", "m": "2025-05", "c": "Dermatologia", "t": "2", "r": 33, "f": 4, "x": 9, "a": 6}, {"u": "Brasília", "m": "2025-05", "c": "Dermatologia", "t": "1", "r": 1, "f": 0, "x": 0, "a": 0}, {"u": "Campinas", "m": "2025-06", "c": "Dermatologia", "t": "2", "r": 47, "f": 4, "x": 8, "a": 0}, {"u": "São Paulo", "m": "2025-06", "c": "Dermatologia", "t": "5", "r": 89, "f": 14, "x": 17, "a": 2}, {"u": "São Paulo", "m": "2025-06", "c": "Dermatologia", "t": "4", "r": 96, "f": 3, "x": 13, "a": 7}, {"u": "Campinas", "m": "2025-06", "c": "Psiquiatria", "t": "2", "r": 30, "f": 9, "x": 4, "a": 1}, {"u": "São Paulo", "m": "2025-06", "c": "Oftalmologia", "t": "2", "r": 40, "f": 4, "x": 9, "a": 6}, {"u": "São Paulo", "m": "2025-06", "c": "Dermatologia", "t": "3", "r": 43, "f": 6, "x": 12, "a": 1}, {"u": "Brasília", "m": "2025-06", "c": "Dermatologia", "t": "1", "r": 43, "f": 8, "x": 7, "a": 4}, {"u": "São Paulo", "m": "2025-06", "c": "Dermatologia", "t": "6", "r": 53, "f": 15, "x": 2, "a": 0}, {"u": "Campinas", "m": "2025-06", "c": "Dermatologia", "t": "3", "r": 80, "f": 16, "x": 7, "a": 0}, {"u": "São Paulo", "m": "2025-06", "c": "Dermatologia", "t": "2", "r": 33, "f": 3, "x": 1, "a": 0}, {"u": "Campinas", "m": "2025-06", "c": "Oftalmologia", "t": "1", "r": 63, "f": 20, "x": 7, "a": 0}, {"u": "São Paulo", "m": "2025-06", "c": "Dermatologia", "t": "7", "r": 29, "f": 4, "x": 2, "a": 1}, {"u": "São Paulo", "m": "2025-07", "c": "Dermatologia", "t": "7", "r": 55, "f": 7, "x": 6, "a": 4}, {"u": "São Paulo", "m": "2025-07", "c": "Dermatologia", "t": "5", "r": 25, "f": 0, "x": 18, "a": 8}, {"u": "Campinas", "m": "2025-07", "c": "Dermatologia", "t": "2", "r": 66, "f": 14, "x": 3, "a": 0}, {"u": "São Paulo", "m": "2025-07", "c": "Dermatologia", "t": "4", "r": 32, "f": 3, "x": 22, "a": 1}, {"u": "Campinas", "m": "2025-07", "c": "Psiquiatria", "t": "2", "r": 28, "f": 14, "x": 6, "a": 0}, {"u": "Brasília", "m": "2025-07", "c": "Dermatologia", "t": "1", "r": 35, "f": 1, "x": 2, "a": 0}, {"u": "São Paulo", "m": "2025-07", "c": "Oftalmologia", "t": "2", "r": 56, "f": 14, "x": 15, "a": 5}, {"u": "São Paulo", "m": "2025-07", "c": "Dermatologia", "t": "3", "r": 36, "f": 3, "x": 8, "a": 3}, {"u": "Campinas", "m": "2025-07", "c": "Dermatologia", "t": "3", "r": 52, "f": 4, "x": 12, "a": 1}, {"u": "São Paulo", "m": "2025-07", "c": "Dermatologia", "t": "6", "r": 42, "f": 12, "x": 19, "a": 1}, {"u": "Campinas", "m": "2025-07", "c": "Endocrinologia", "t": "1", "r": 40, "f": 13, "x": 12, "a": 0}, {"u": "São Paulo", "m": "2025-07", "c": "Dermatologia", "t": "2", "r": 43, "f": 6, "x": 3, "a": 1}, {"u": "Brasília", "m": "2025-08", "c": "Dermatologia", "t": "1", "r": 39, "f": 3, "x": 8, "a": 0}, {"u": "São Paulo", "m": "2025-08", "c": "Oftalmologia", "t": "3", "r": 70, "f": 7, "x": 7, "a": 11}, {"u": "São Paulo", "m": "2025-08", "c": "Dermatologia", "t": "7", "r": 57, "f": 2, "x": 15, "a": 2}, {"u": "Campinas", "m": "2025-08", "c": "Dermatologia", "t": "2", "r": 64, "f": 4, "x": 5, "a": 1}, {"u": "São Paulo", "m": "2025-08", "c": "Dermatologia", "t": "5", "r": 81, "f": 11, "x": 25, "a": 28}, {"u": "São Paulo", "m": "2025-08", "c": "Dermatologia", "t": "9", "r": 102, "f": 6, "x": 26, "a": 10}, {"u": "São Paulo", "m": "2025-08", "c": "Dermatologia", "t": "4", "r": 97, "f": 10, "x": 24, "a": 18}, {"u": "Campinas", "m": "2025-08", "c": "Psiquiatria", "t": "2", "r": 39, "f": 10, "x": 6, "a": 0}, {"u": "Online", "m": "2025-08", "c": "Psiquiatria", "t": "1", "r": 3, "f": 0, "x": 0, "a": 0}, {"u": "São Paulo", "m": "2025-08", "c": "Oftalmologia", "t": "2", "r": 66, "f": 16, "x": 8, "a": 12}, {"u": "Campinas", "m": "2025-08", "c": "Dermatologia", "t": "4", "r": 69, "f": 19, "x": 10, "a": 3}, {"u": "São Paulo", "m": "2025-08", "c": "Dermatologia", "t": "3", "r": 40, "f": 3, "x": 9, "a": 4}, {"u": "Campinas", "m": "2025-08", "c": "Dermatologia", "t": "3", "r": 68, "f": 12, "x": 5, "a": 0}, {"u": "Campinas", "m": "2025-08", "c": "Endocrinologia", "t": "1", "r": 57, "f": 19, "x": 16, "a": 0}, {"u": "São Paulo", "m": "2025-08", "c": "Dermatologia", "t": "6", "r": 107, "f": 8, "x": 15, "a": 8}, {"u": "Campinas", "m": "2025-08", "c": "Oftalmologia", "t": "1", "r": 59, "f": 23, "x": 18, "a": 0}, {"u": "São Paulo", "m": "2025-08", "c": "Dermatologia", "t": "2", "r": 40, "f": 0, "x": 9, "a": 0}, {"u": "Campinas", "m": "2025-08", "c": "Pediatria", "t": "2", "r": 21, "f": 7, "x": 4, "a": 0}, {"u": "São Paulo", "m": "2025-09", "c": "Oftalmologia", "t": "3", "r": 66, "f": 17, "x": 17, "a": 0}, {"u": "São Paulo", "m": "2025-09", "c": "Dermatologia", "t": "7", "r": 85, "f": 20, "x": 35, "a": 4}, {"u": "Online", "m": "2025-09", "c": "Psiquiatria", "t": "1", "r": 43, "f": 5, "x": 5, "a": 3}, {"u": "Campinas", "m": "2025-09", "c": "Dermatologia", "t": "2", "r": 82, "f": 17, "x": 7, "a": 1}, {"u": "São Paulo", "m": "2025-09", "c": "Dermatologia", "t": "9", "r": 65, "f": 6, "x": 11, "a": 0}, {"u": "São Paulo", "m": "2025-09", "c": "Dermatologia", "t": "5", "r": 95, "f": 15, "x": 19, "a": 0}, {"u": "Brasília", "m": "2025-09", "c": "Dermatologia", "t": "1", "r": 35, "f": 0, "x": 4, "a": 2}, {"u": "Campinas", "m": "2025-09", "c": "Pediatria", "t": "2", "r": 17, "f": 1, "x": 8, "a": 2}, {"u": "Campinas", "m": "2025-09", "c": "Psiquiatria", "t": "2", "r": 41, "f": 9, "x": 8, "a": 4}, {"u": "São Paulo", "m": "2025-09", "c": "Dermatologia", "t": "4", "r": 61, "f": 8, "x": 4, "a": 0}, {"u": "Online", "m": "2025-09", "c": "Endocrinologia", "t": "1", "r": 35, "f": 6, "x": 7, "a": 4}, {"u": "Campinas", "m": "2025-09", "c": "Dermatologia", "t": "4", "r": 55, "f": 4, "x": 11, "a": 0}, {"u": "São Paulo", "m": "2025-09", "c": "Oftalmologia", "t": "2", "r": 70, "f": 8, "x": 20, "a": 4}, {"u": "São Paulo", "m": "2025-09", "c": "Dermatologia", "t": "3", "r": 41, "f": 0, "x": 2, "a": 2}, {"u": "São Paulo", "m": "2025-09", "c": "Dermatologia", "t": "8", "r": 94, "f": 21, "x": 13, "a": 3}, {"u": "Campinas", "m": "2025-09", "c": "Dermatologia", "t": "3", "r": 74, "f": 16, "x": 7, "a": 1}, {"u": "Campinas", "m": "2025-09", "c": "Oftalmologia", "t": "1", "r": 71, "f": 21, "x": 10, "a": 7}, {"u": "São Paulo", "m": "2025-09", "c": "Dermatologia", "t": "2", "r": 51, "f": 11, "x": 13, "a": 0}, {"u": "Campinas", "m": "2025-09", "c": "Endocrinologia", "t": "1", "r": 72, "f": 7, "x": 6, "a": 5}, {"u": "São Paulo", "m": "2025-09", "c": "Dermatologia", "t": "6", "r": 53, "f": 11, "x": 15, "a": 1}, {"u": "Brasília", "m": "2025-09", "c": "Oftalmologia", "t": "1", "r": 36, "f": 0, "x": 5, "a": 0}, {"u": "Campinas", "m": "2025-10", "c": "Dermatologia", "t": "2", "r": 62, "f": 3, "x": 11, "a": 2}, {"u": "São Paulo", "m": "2025-10", "c": "Dermatologia", "t": "9", "r": 97, "f": 0, "x": 37, "a": 13}, {"u": "São Paulo", "m": "2025-10", "c": "Dermatologia", "t": "5", "r": 57, "f": 1, "x": 8, "a": 4}, {"u": "São Paulo", "m": "2025-10", "c": "Dermatologia", "t": "4", "r": 98, "f": 15, "x": 8, "a": 8}, {"u": "São Paulo", "m": "2025-10", "c": "Oftalmologia", "t": "3", "r": 61, "f": 6, "x": 22, "a": 16}, {"u": "São Paulo", "m": "2025-10", "c": "Dermatologia", "t": "7", "r": 45, "f": 8, "x": 10, "a": 15}, {"u": "São Paulo", "m": "2025-10", "c": "Dermatologia", "t": "3", "r": 33, "f": 4, "x": 9, "a": 4}, {"u": "Brasília", "m": "2025-10", "c": "Dermatologia", "t": "1", "r": 49, "f": 2, "x": 7, "a": 2}, {"u": "São Paulo", "m": "2025-10", "c": "Oftalmologia", "t": "2", "r": 48, "f": 14, "x": 17, "a": 14}, {"u": "Campinas", "m": "2025-10", "c": "Psiquiatria", "t": "2", "r": 46, "f": 15, "x": 6, "a": 0}, {"u": "São Paulo", "m": "2025-10", "c": "Dermatologia", "t": "8", "r": 58, "f": 10, "x": 11, "a": 1}, {"u": "Campinas", "m": "2025-10", "c": "Endocrinologia", "t": "1", "r": 52, "f": 16, "x": 11, "a": 3}, {"u": "Campinas", "m": "2025-10", "c": "Dermatologia", "t": "4", "r": 76, "f": 15, "x": 8, "a": 0}, {"u": "São Paulo", "m": "2025-10", "c": "Dermatologia", "t": "2", "r": 53, "f": 9, "x": 8, "a": 4}, {"u": "Campinas", "m": "2025-10", "c": "Dermatologia", "t": "3", "r": 70, "f": 11, "x": 15, "a": 0}, {"u": "Campinas", "m": "2025-10", "c": "Pediatria", "t": "2", "r": 20, "f": 2, "x": 6, "a": 1}, {"u": "São Paulo", "m": "2025-10", "c": "Dermatologia", "t": "6", "r": 90, "f": 14, "x": 16, "a": 21}, {"u": "São Paulo", "m": "2025-10", "c": "Oftalmologia", "t": "4", "r": 60, "f": 13, "x": 10, "a": 10}, {"u": "Campinas", "m": "2025-10", "c": "Oftalmologia", "t": "1", "r": 67, "f": 16, "x": 12, "a": 0}, {"u": "Brasília", "m": "2025-10", "c": "Oftalmologia", "t": "1", "r": 34, "f": 3, "x": 5, "a": 0}, {"u": "São Paulo", "m": "2025-10", "c": "Psiquiatria", "t": "2", "r": 50, "f": 8, "x": 13, "a": 1}, {"u": "São Paulo", "m": "2025-11", "c": "Oftalmologia", "t": "3", "r": 56, "f": 13, "x": 12, "a": 8}, {"u": "São Paulo", "m": "2025-11", "c": "Dermatologia", "t": "4", "r": 50, "f": 16, "x": 1, "a": 0}, {"u": "São Paulo", "m": "2025-11", "c": "Dermatologia", "t": "7", "r": 74, "f": 27, "x": 8, "a": 15}, {"u": "Online", "m": "2025-11", "c": "Endocrinologia", "t": "1", "r": 33, "f": 1, "x": 3, "a": 2}, {"u": "Brasília", "m": "2025-11", "c": "Endocrinologia", "t": "1", "r": 31, "f": 0, "x": 7, "a": 2}, {"u": "São Paulo", "m": "2025-11", "c": "Dermatologia", "t": "5", "r": 76, "f": 21, "x": 5, "a": 24}, {"u": "Campinas", "m": "2025-11", "c": "Dermatologia", "t": "2", "r": 49, "f": 17, "x": 1, "a": 1}, {"u": "Campinas", "m": "2025-11", "c": "Neuropediatria", "t": "1", "r": 13, "f": 4, "x": 0, "a": 0}, {"u": "São Paulo", "m": "2025-11", "c": "Dermatologia", "t": "2", "r": 26, "f": 1, "x": 5, "a": 1}, {"u": "Campinas", "m": "2025-11", "c": "Psiquiatria", "t": "2", "r": 43, "f": 21, "x": 2, "a": 1}, {"u": "Campinas", "m": "2025-11", "c": "Endocrinologia", "t": "1", "r": 65, "f": 25, "x": 8, "a": 3}, {"u": "São Paulo", "m": "2025-11", "c": "Dermatologia", "t": "8", "r": 95, "f": 31, "x": 3, "a": 5}, {"u": "Campinas", "m": "2025-11", "c": "Dermatologia", "t": "3", "r": 73, "f": 31, "x": 12, "a": 1}, {"u": "São Paulo", "m": "2025-11", "c": "Dermatologia", "t": "3", "r": 46, "f": 6, "x": 8, "a": 5}, {"u": "Online", "m": "2025-11", "c": "Psiquiatria", "t": "1", "r": 1, "f": 0, "x": 0, "a": 0}, {"u": "São Paulo", "m": "2025-11", "c": "Psiquiatria", "t": "2", "r": 51, "f": 5, "x": 4, "a": 25}, {"u": "Campinas", "m": "2025-11", "c": "Pediatria", "t": "2", "r": 23, "f": 12, "x": 5, "a": 0}, {"u": "Campinas", "m": "2025-11", "c": "Oftalmologia", "t": "1", "r": 59, "f": 36, "x": 11, "a": 1}, {"u": "São Paulo", "m": "2025-11", "c": "Dermatologia", "t": "10", "r": 71, "f": 28, "x": 5, "a": 32}, {"u": "São Paulo", "m": "2025-11", "c": "Oftalmologia", "t": "4", "r": 46, "f": 17, "x": 6, "a": 20}, {"u": "Brasília", "m": "2025-11", "c": "Dermatologia", "t": "1", "r": 57, "f": 8, "x": 7, "a": 4}, {"u": "São Paulo", "m": "2025-11", "c": "Dermatologia", "t": "6", "r": 63, "f": 15, "x": 3, "a": 11}, {"u": "Brasília", "m": "2025-11", "c": "Oftalmologia", "t": "1", "r": 17, "f": 4, "x": 0, "a": 10}, {"u": "São Paulo", "m": "2025-12", "c": "Oftalmologia", "t": "3", "r": 59, "f": 13, "x": 5, "a": 13}, {"u": "São Paulo", "m": "2025-12", "c": "Dermatologia", "t": "7", "r": 66, "f": 9, "x": 0, "a": 14}, {"u": "Online", "m": "2025-12", "c": "Psiquiatria", "t": "1", "r": 23, "f": 1, "x": 1, "a": 4}, {"u": "Campinas", "m": "2025-12", "c": "Dermatologia", "t": "2", "r": 23, "f": 5, "x": 18, "a": 1}, {"u": "São Paulo", "m": "2025-12", "c": "Dermatologia", "t": "5", "r": 30, "f": 2, "x": 7, "a": 6}, {"u": "São Paulo", "m": "2025-12", "c": "Dermatologia", "t": "9", "r": 43, "f": 3, "x": 5, "a": 2}, {"u": "Campinas", "m": "2025-12", "c": "Neuropediatria", "t": "1", "r": 15, "f": 1, "x": 5, "a": 0}, {"u": "Campinas", "m": "2025-12", "c": "Psiquiatria", "t": "2", "r": 49, "f": 14, "x": 7, "a": 1}, {"u": "São Paulo", "m": "2025-12", "c": "Dermatologia", "t": "8", "r": 37, "f": 8, "x": 2, "a": 2}, {"u": "Campinas", "m": "2025-12", "c": "Pediatria", "t": "3", "r": 10, "f": 2, "x": 4, "a": 2}, {"u": "São Paulo", "m": "2025-12", "c": "Oftalmologia", "t": "2", "r": 51, "f": 11, "x": 5, "a": 24}, {"u": "Campinas", "m": "2025-12", "c": "Dermatologia", "t": "4", "r": 53, "f": 9, "x": 13, "a": 0}, {"u": "São Paulo", "m": "2025-12", "c": "Dermatologia", "t": "3", "r": 21, "f": 5, "x": 13, "a": 2}, {"u": "Campinas", "m": "2025-12", "c": "Endocrinologia", "t": "1", "r": 63, "f": 5, "x": 14, "a": 16}, {"u": "São Paulo", "m": "2025-12", "c": "Dermatologia", "t": "6", "r": 35, "f": 1, "x": 1, "a": 1}, {"u": "Campinas", "m": "2025-12", "c": "Dermatologia", "t": "3", "r": 74, "f": 11, "x": 3, "a": 2}, {"u": "Campinas", "m": "2025-12", "c": "Dermatologia", "t": "5", "r": 0, "f": 0, "x": 1, "a": 0}, {"u": "Campinas", "m": "2025-12", "c": "Oftalmologia", "t": "1", "r": 71, "f": 24, "x": 7, "a": 0}, {"u": "São Paulo", "m": "2025-12", "c": "Oftalmologia", "t": "4", "r": 61, "f": 0, "x": 5, "a": 27}, {"u": "São Paulo", "m": "2025-12", "c": "Dermatologia", "t": "10", "r": 51, "f": 6, "x": 7, "a": 6}, {"u": "São Paulo", "m": "2026-01", "c": "Dermatologia", "t": "7", "r": 24, "f": 7, "x": 6, "a": 7}, {"u": "São Paulo", "m": "2026-01", "c": "Dermatologia", "t": "4", "r": 31, "f": 12, "x": 4, "a": 0}, {"u": "Campinas", "m": "2026-01", "c": "Dermatologia", "t": "2", "r": 55, "f": 11, "x": 8, "a": 0}, {"u": "São Paulo", "m": "2026-01", "c": "Dermatologia", "t": "5", "r": 55, "f": 15, "x": 9, "a": 13}, {"u": "São Paulo", "m": "2026-01", "c": "Dermatologia", "t": "9", "r": 57, "f": 21, "x": 41, "a": 18}, {"u": "Campinas", "m": "2026-01", "c": "Neuropediatria", "t": "1", "r": 13, "f": 2, "x": 1, "a": 0}, {"u": "São Paulo", "m": "2026-01", "c": "Oftalmologia", "t": "3", "r": 50, "f": 19, "x": 6, "a": 13}, {"u": "Campinas", "m": "2026-01", "c": "Psiquiatria", "t": "2", "r": 33, "f": 26, "x": 3, "a": 0}, {"u": "Campinas", "m": "2026-01", "c": "Pediatria", "t": "3", "r": 10, "f": 6, "x": 0, "a": 0}, {"u": "Campinas", "m": "2026-01", "c": "Dermatologia", "t": "4", "r": 73, "f": 8, "x": 12, "a": 0}, {"u": "Online", "m": "2026-01", "c": "Psiquiatria", "t": "2", "r": 23, "f": 0, "x": 3, "a": 5}, {"u": "Campinas", "m": "2026-01", "c": "Oftalmologia", "t": "1", "r": 74, "f": 23, "x": 10, "a": 1}, {"u": "São Paulo", "m": "2026-01", "c": "Dermatologia", "t": "3", "r": 36, "f": 0, "x": 0, "a": 0}, {"u": "São Paulo", "m": "2026-01", "c": "Tricologia", "t": "1", "r": 26, "f": 0, "x": 21, "a": 6}, {"u": "São Paulo", "m": "2026-01", "c": "Endocrinologia", "t": "2", "r": 46, "f": 2, "x": 18, "a": 4}, {"u": "São Paulo", "m": "2026-01", "c": "Dermatologia", "t": "8", "r": 74, "f": 22, "x": 30, "a": 8}, {"u": "Campinas", "m": "2026-01", "c": "Dermatologia", "t": "3", "r": 66, "f": 25, "x": 13, "a": 0}, {"u": "Online", "m": "2026-01", "c": "Endocrinologia", "t": "2", "r": 12, "f": 0, "x": 2, "a": 1}, {"u": "São Paulo", "m": "2026-01", "c": "Oftalmologia", "t": "2", "r": 56, "f": 10, "x": 10, "a": 14}, {"u": "Campinas", "m": "2026-01", "c": "Endocrinologia", "t": "1", "r": 60, "f": 10, "x": 31, "a": 0}, {"u": "São Paulo", "m": "2026-01", "c": "Dermatologia", "t": "6", "r": 72, "f": 23, "x": 21, "a": 18}, {"u": "Brasília", "m": "2026-01", "c": "Endocrinologia", "t": "1", "r": 26, "f": 3, "x": 8, "a": 0}, {"u": "Brasília", "m": "2026-01", "c": "Dermatologia", "t": "1", "r": 50, "f": 8, "x": 3, "a": 0}, {"u": "Campinas", "m": "2026-01", "c": "Endocrinologia", "t": "2", "r": 48, "f": 8, "x": 5, "a": 0}, {"u": "São Paulo", "m": "2026-01", "c": "Psiquiatria", "t": "2", "r": 41, "f": 4, "x": 27, "a": 19}, {"u": "Campinas", "m": "2026-01", "c": "Pediatria", "t": "2", "r": 27, "f": 6, "x": 6, "a": 0}, {"u": "São Paulo", "m": "2026-01", "c": "Oftalmologia", "t": "4", "r": 57, "f": 30, "x": 12, "a": 0}, {"u": "Brasília", "m": "2026-01", "c": "Oftalmologia", "t": "1", "r": 30, "f": 6, "x": 3, "a": 0}, {"u": "São Paulo", "m": "2026-01", "c": "Dermatologia", "t": "10", "r": 61, "f": 52, "x": 42, "a": 0}, {"u": "Campinas", "m": "2026-02", "c": "Pediatria", "t": "3", "r": 7, "f": 12, "x": 5, "a": 3}, {"u": "Campinas", "m": "2026-02", "c": "Dermatologia", "t": "5", "r": 100, "f": 36, "x": 13, "a": 1}, {"u": "São Paulo", "m": "2026-02", "c": "Oftalmologia", "t": "3", "r": 29, "f": 7, "x": 2, "a": 5}, {"u": "São Paulo", "m": "2026-02", "c": "Dermatologia", "t": "7", "r": 67, "f": 32, "x": 6, "a": 11}, {"u": "São Paulo", "m": "2026-02", "c": "Oftalmologia", "t": "5", "r": 31, "f": 11, "x": 2, "a": 2}, {"u": "Campinas", "m": "2026-02", "c": "Pediatria", "t": "2", "r": 27, "f": 9, "x": 4, "a": 2}, {"u": "Campinas", "m": "2026-02", "c": "Dermatologia", "t": "4", "r": 62, "f": 9, "x": 29, "a": 0}, {"u": "Online", "m": "2026-02", "c": "Endocrinologia", "t": "1", "r": 10, "f": 0, "x": 0, "a": 4}, {"u": "São Paulo", "m": "2026-02", "c": "Dermatologia", "t": "6", "r": 23, "f": 9, "x": 5, "a": 2}, {"u": "Campinas", "m": "2026-02", "c": "Psiquiatria", "t": "3", "r": 35, "f": 10, "x": 5, "a": 0}, {"u": "Campinas", "m": "2026-02", "c": "Dermatologia", "t": "2", "r": 33, "f": 14, "x": 25, "a": 1}, {"u": "São Paulo", "m": "2026-02", "c": "Dermatologia", "t": "9", "r": 63, "f": 22, "x": 1, "a": 7}, {"u": "Brasília", "m": "2026-02", "c": "Dermatologia", "t": "1", "r": 45, "f": 5, "x": 1, "a": 0}, {"u": "São Paulo", "m": "2026-02", "c": "Dermatologia", "t": "5", "r": 23, "f": 9, "x": 1, "a": 1}, {"u": "São Paulo", "m": "2026-02", "c": "Psiquiatria Infantil", "t": "1", "r": 8, "f": 0, "x": 0, "a": 1}, {"u": "Campinas", "m": "2026-02", "c": "Neuropediatria", "t": "1", "r": 14, "f": 7, "x": 2, "a": 1}, {"u": "Brasília", "m": "2026-02", "c": "Oftalmologia", "t": "1", "r": 27, "f": 7, "x": 4, "a": 1}, {"u": "Campinas", "m": "2026-02", "c": "Psiquiatria", "t": "2", "r": 45, "f": 11, "x": 19, "a": 1}, {"u": "São Paulo", "m": "2026-02", "c": "Dermatologia", "t": "4", "r": 25, "f": 1, "x": 3, "a": 6}, {"u": "São Paulo", "m": "2026-02", "c": "Dermatologia Cirurgica", "t": "1", "r": 16, "f": 2, "x": 1, "a": 1}, {"u": "Online", "m": "2026-02", "c": "Psiquiatria", "t": "1", "r": 13, "f": 9, "x": 0, "a": 3}, {"u": "Campinas", "m": "2026-02", "c": "Endocrinologia", "t": "1", "r": 50, "f": 20, "x": 16, "a": 3}, {"u": "Brasília", "m": "2026-02", "c": "Endocrinologia", "t": "1", "r": 24, "f": 2, "x": 2, "a": 0}, {"u": "São Paulo", "m": "2026-02", "c": "Endocrinologia", "t": "2", "r": 46, "f": 13, "x": 4, "a": 2}, {"u": "São Paulo", "m": "2026-02", "c": "Oftalmologia", "t": "4", "r": 41, "f": 23, "x": 4, "a": 5}, {"u": "Campinas", "m": "2026-02", "c": "Dermatologia", "t": "3", "r": 26, "f": 20, "x": 20, "a": 1}, {"u": "Campinas", "m": "2026-02", "c": "Neuropediatria", "t": "2", "r": 11, "f": 1, "x": 2, "a": 0}, {"u": "São Paulo", "m": "2026-02", "c": "Psiquiatria", "t": "2", "r": 49, "f": 21, "x": 2, "a": 1}, {"u": "Campinas", "m": "2026-02", "c": "Endocrinologia", "t": "2", "r": 40, "f": 21, "x": 7, "a": 4}, {"u": "São Paulo", "m": "2026-02", "c": "Dermatologia", "t": "8", "r": 0, "f": 0, "x": 1, "a": 0}, {"u": "São Paulo", "m": "2026-02", "c": "Oftalmologia", "t": "2", "r": 52, "f": 14, "x": 1, "a": 0}, {"u": "São Paulo", "m": "2026-02", "c": "Tricologia", "t": "1", "r": 39, "f": 12, "x": 4, "a": 2}, {"u": "Campinas", "m": "2026-02", "c": "Oftalmologia", "t": "1", "r": 42, "f": 10, "x": 7, "a": 1}, {"u": "São Paulo", "m": "2026-02", "c": "Dermatologia", "t": "10", "r": 39, "f": 7, "x": 0, "a": 0}, {"u": "Campinas", "m": "2026-03", "c": "Pediatria", "t": "3", "r": 10, "f": 5, "x": 1, "a": 1}, {"u": "São Paulo", "m": "2026-03", "c": "Endocrinologia", "t": "3", "r": 58, "f": 8, "x": 20, "a": 11}, {"u": "São Paulo", "m": "2026-03", "c": "Dermatologia", "t": "7", "r": 71, "f": 13, "x": 9, "a": 16}, {"u": "Campinas", "m": "2026-03", "c": "Dermatologia", "t": "5", "r": 58, "f": 16, "x": 30, "a": 0}, {"u": "São Paulo", "m": "2026-03", "c": "Oftalmologia", "t": "3", "r": 54, "f": 12, "x": 5, "a": 9}, {"u": "São Paulo", "m": "2026-03", "c": "Psiquiatria", "t": "3", "r": 42, "f": 7, "x": 3, "a": 5}, {"u": "São Paulo", "m": "2026-03", "c": "Dermatologia", "t": "5", "r": 41, "f": 7, "x": 5, "a": 7}, {"u": "São Paulo", "m": "2026-03", "c": "Dermatologia", "t": "9", "r": 33, "f": 10, "x": 2, "a": 2}, {"u": "Campinas", "m": "2026-03", "c": "Dermatologia", "t": "2", "r": 50, "f": 7, "x": 6, "a": 0}, {"u": "Brasília", "m": "2026-03", "c": "Dermatologia", "t": "1", "r": 49, "f": 8, "x": 8, "a": 2}, {"u": "São Paulo", "m": "2026-03", "c": "Psiquiatria Infantil", "t": "1", "r": 8, "f": 2, "x": 4, "a": 1}, {"u": "Campinas", "m": "2026-03", "c": "Neuropediatria", "t": "2", "r": 19, "f": 1, "x": 5, "a": 0}, {"u": "Campinas", "m": "2026-03", "c": "Neuropediatria", "t": "1", "r": 13, "f": 3, "x": 15, "a": 0}, {"u": "São Paulo", "m": "2026-03", "c": "Dermatologia", "t": "4", "r": 29, "f": 7, "x": 1, "a": 5}, {"u": "Campinas", "m": "2026-03", "c": "Psiquiatria", "t": "2", "r": 29, "f": 10, "x": 3, "a": 4}, {"u": "Campinas", "m": "2026-03", "c": "Oftalmologia", "t": "2", "r": 41, "f": 17, "x": 0, "a": 4}, {"u": "São Paulo", "m": "2026-03", "c": "Dermatologia Cirurgica", "t": "1", "r": 27, "f": 9, "x": 2, "a": 1}, {"u": "São Paulo", "m": "2026-03", "c": "Dermatologia", "t": "14", "r": 73, "f": 39, "x": 3, "a": 15}, {"u": "Campinas", "m": "2026-03", "c": "Pediatria", "t": "4", "r": 16, "f": 9, "x": 0, "a": 1}, {"u": "Online", "m": "2026-03", "c": "Psiquiatria", "t": "2", "r": 19, "f": 1, "x": 1, "a": 1}, {"u": "Brasília", "m": "2026-03", "c": "Endocrinologia", "t": "1", "r": 25, "f": 3, "x": 5, "a": 0}, {"u": "Campinas", "m": "2026-03", "c": "Dermatologia", "t": "4", "r": 31, "f": 3, "x": 34, "a": 3}, {"u": "São Paulo", "m": "2026-03", "c": "Dermatologia", "t": "16", "r": 61, "f": 13, "x": 5, "a": 17}, {"u": "São Paulo", "m": "2026-03", "c": "Dermatologia", "t": "12", "r": 55, "f": 16, "x": 3, "a": 22}, {"u": "Online", "m": "2026-03", "c": "Endocrinologia", "t": "1", "r": 0, "f": 0, "x": 11, "a": 1}, {"u": "Campinas", "m": "2026-03", "c": "Pediatria", "t": "5", "r": 17, "f": 3, "x": 0, "a": 0}, {"u": "São Paulo", "m": "2026-03", "c": "Dermatologia", "t": "11", "r": 49, "f": 3, "x": 1, "a": 33}, {"u": "São Paulo", "m": "2026-03", "c": "Endocrinologia", "t": "2", "r": 41, "f": 9, "x": 9, "a": 8}, {"u": "Campinas", "m": "2026-03", "c": "Dermatologia", "t": "3", "r": 32, "f": 7, "x": 8, "a": 0}, {"u": "São Paulo", "m": "2026-03", "c": "Dermatologia", "t": "8", "r": 53, "f": 3, "x": 7, "a": 26}, {"u": "Campinas", "m": "2026-03", "c": "Endocrinologia", "t": "2", "r": 34, "f": 14, "x": 7, "a": 1}, {"u": "São Paulo", "m": "2026-03", "c": "Dermatologia", "t": "3", "r": 0, "f": 0, "x": 0, "a": 2}, {"u": "São Paulo", "m": "2026-03", "c": "Oftalmologia", "t": "2", "r": 0, "f": 0, "x": 0, "a": 3}, {"u": "Campinas", "m": "2026-03", "c": "Endocrinologia", "t": "1", "r": 48, "f": 15, "x": 11, "a": 0}, {"u": "São Paulo", "m": "2026-03", "c": "Dermatologia", "t": "6", "r": 54, "f": 3, "x": 14, "a": 21}, {"u": "São Paulo", "m": "2026-03", "c": "Dermatologia", "t": "13", "r": 51, "f": 2, "x": 11, "a": 38}, {"u": "São Paulo", "m": "2026-03", "c": "Psiquiatria", "t": "4", "r": 11, "f": 0, "x": 3, "a": 4}, {"u": "São Paulo", "m": "2026-03", "c": "Psiquiatria", "t": "2", "r": 43, "f": 10, "x": 10, "a": 17}, {"u": "São Paulo", "m": "2026-03", "c": "Oftalmologia", "t": "5", "r": 61, "f": 7, "x": 10, "a": 10}, {"u": "Online", "m": "2026-03", "c": "Endocrinologia", "t": "2", "r": 20, "f": 6, "x": 1, "a": 0}, {"u": "Campinas", "m": "2026-03", "c": "Psiquiatria", "t": "4", "r": 13, "f": 1, "x": 7, "a": 0}, {"u": "São Paulo", "m": "2026-03", "c": "Dermatologia", "t": "10", "r": 76, "f": 17, "x": 5, "a": 26}, {"u": "São Paulo", "m": "2026-03", "c": "Tricologia", "t": "1", "r": 41, "f": 2, "x": 16, "a": 15}, {"u": "Brasília", "m": "2026-03", "c": "Oftalmologia", "t": "1", "r": 48, "f": 5, "x": 7, "a": 0}, {"u": "São Paulo", "m": "2026-03", "c": "Oftalmologia", "t": "4", "r": 68, "f": 4, "x": 8, "a": 8}, {"u": "Campinas", "m": "2026-03", "c": "Psiquiatria", "t": "3", "r": 33, "f": 13, "x": 8, "a": 0}, {"u": "Campinas", "m": "2026-03", "c": "Oftalmologia", "t": "1", "r": 42, "f": 9, "x": 8, "a": 3}, {"u": "Campinas", "m": "2026-03", "c": "Neuropediatria", "t": "3", "r": 12, "f": 0, "x": 1, "a": 0}, {"u": "São Paulo", "m": "2026-04", "c": "Endocrinologia", "t": "3", "r": 13, "f": 2, "x": 8, "a": 5}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia", "t": "7", "r": 21, "f": 0, "x": 5, "a": 7}, {"u": "São Paulo", "m": "2026-04", "c": "Oftalmologia", "t": "3", "r": 20, "f": 0, "x": 2, "a": 12}, {"u": "Campinas", "m": "2026-04", "c": "Dermatologia", "t": "7", "r": 42, "f": 24, "x": 41, "a": 2}, {"u": "Campinas", "m": "2026-04", "c": "Oftalmologia", "t": "2", "r": 25, "f": 0, "x": 20, "a": 44}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia", "t": "11", "r": 26, "f": 7, "x": 29, "a": 6}, {"u": "Campinas", "m": "2026-04", "c": "Psiquiatria", "t": "2", "r": 37, "f": 8, "x": 1, "a": 12}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia", "t": "4", "r": 34, "f": 1, "x": 21, "a": 13}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia Cirurgica", "t": "1", "r": 37, "f": 4, "x": 9, "a": 8}, {"u": "Online", "m": "2026-04", "c": "Endocrinologia", "t": "1", "r": 13, "f": 1, "x": 1, "a": 3}, {"u": "Online", "m": "2026-04", "c": "Psiquiatria", "t": "3", "r": 14, "f": 2, "x": 0, "a": 0}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia", "t": "13", "r": 36, "f": 12, "x": 32, "a": 2}, {"u": "Campinas", "m": "2026-04", "c": "Pediatria", "t": "5", "r": 24, "f": 15, "x": 0, "a": 3}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia", "t": "9", "r": 72, "f": 5, "x": 8, "a": 23}, {"u": "Brasília", "m": "2026-04", "c": "Dermatologia", "t": "2", "r": 70, "f": 25, "x": 11, "a": 8}, {"u": "São Paulo", "m": "2026-04", "c": "Psiquiatria", "t": "3", "r": 51, "f": 5, "x": 5, "a": 22}, {"u": "Campinas", "m": "2026-04", "c": "Endocrinologia", "t": "1", "r": 42, "f": 13, "x": 18, "a": 7}, {"u": "Brasília", "m": "2026-04", "c": "Dermatologia", "t": "1", "r": 59, "f": 9, "x": 12, "a": 1}, {"u": "Campinas", "m": "2026-04", "c": "Dermatologia", "t": "2", "r": 35, "f": 8, "x": 13, "a": 1}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia", "t": "15", "r": 75, "f": 11, "x": 16, "a": 29}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia", "t": "5", "r": 22, "f": 4, "x": 5, "a": 10}, {"u": "Brasília", "m": "2026-04", "c": "Oftalmologia", "t": "1", "r": 46, "f": 3, "x": 2, "a": 7}, {"u": "São Paulo", "m": "2026-04", "c": "Psiquiatria Infantil", "t": "1", "r": 9, "f": 1, "x": 0, "a": 2}, {"u": "Campinas", "m": "2026-04", "c": "Neuropediatria", "t": "2", "r": 13, "f": 1, "x": 5, "a": 2}, {"u": "Campinas", "m": "2026-04", "c": "Neuropediatria", "t": "1", "r": 0, "f": 0, "x": 2, "a": 0}, {"u": "Campinas", "m": "2026-04", "c": "Pediatria", "t": "3", "r": 15, "f": 2, "x": 12, "a": 3}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia", "t": "8", "r": 36, "f": 7, "x": 35, "a": 0}, {"u": "Campinas", "m": "2026-04", "c": "Endocrinologia", "t": "2", "r": 35, "f": 0, "x": 17, "a": 19}, {"u": "Campinas", "m": "2026-04", "c": "Dermatologia", "t": "3", "r": 37, "f": 4, "x": 10, "a": 3}, {"u": "São Paulo", "m": "2026-04", "c": "Endocrinologia", "t": "2", "r": 37, "f": 18, "x": 14, "a": 8}, {"u": "São Paulo", "m": "2026-04", "c": "Oftalmologia", "t": "6", "r": 41, "f": 20, "x": 8, "a": 10}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia", "t": "3", "r": 0, "f": 0, "x": 0, "a": 3}, {"u": "São Paulo", "m": "2026-04", "c": "Oftalmologia", "t": "5", "r": 61, "f": 18, "x": 9, "a": 4}, {"u": "Online", "m": "2026-04", "c": "Psiquiatria", "t": "1", "r": 22, "f": 2, "x": 0, "a": 0}, {"u": "Campinas", "m": "2026-04", "c": "Psiquiatria", "t": "4", "r": 16, "f": 0, "x": 7, "a": 0}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia", "t": "12", "r": 36, "f": 5, "x": 40, "a": 0}, {"u": "Online", "m": "2026-04", "c": "Endocrinologia", "t": "3", "r": 14, "f": 1, "x": 0, "a": 0}, {"u": "Campinas", "m": "2026-04", "c": "Pediatria", "t": "2", "r": 13, "f": 4, "x": 6, "a": 2}, {"u": "São Paulo", "m": "2026-04", "c": "Oftalmologia", "t": "2", "r": 60, "f": 21, "x": 7, "a": 2}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia", "t": "6", "r": 53, "f": 15, "x": 16, "a": 5}, {"u": "Brasília", "m": "2026-04", "c": "Endocrinologia", "t": "1", "r": 30, "f": 6, "x": 13, "a": 2}, {"u": "Campinas", "m": "2026-04", "c": "Dermatologia", "t": "4", "r": 53, "f": 11, "x": 16, "a": 0}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia", "t": "17", "r": 75, "f": 19, "x": 16, "a": 9}, {"u": "São Paulo", "m": "2026-04", "c": "Psiquiatria", "t": "4", "r": 10, "f": 4, "x": 7, "a": 3}, {"u": "Online", "m": "2026-04", "c": "Endocrinologia", "t": "4", "r": 12, "f": 1, "x": 0, "a": 0}, {"u": "São Paulo", "m": "2026-04", "c": "Tricologia", "t": "1", "r": 35, "f": 20, "x": 19, "a": 8}, {"u": "São Paulo", "m": "2026-04", "c": "Oftalmologia", "t": "4", "r": 48, "f": 16, "x": 7, "a": 4}, {"u": "Campinas", "m": "2026-04", "c": "Oftalmologia", "t": "1", "r": 51, "f": 13, "x": 20, "a": 0}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia", "t": "10", "r": 81, "f": 33, "x": 19, "a": 2}, {"u": "São Paulo", "m": "2026-04", "c": "Endocrinologia", "t": "4", "r": 24, "f": 14, "x": 4, "a": 1}, {"u": "São Paulo", "m": "2026-04", "c": "Nutrologia", "t": "1", "r": 7, "f": 4, "x": 4, "a": 0}, {"u": "Campinas", "m": "2026-04", "c": "Neuropediatria", "t": "3", "r": 10, "f": 2, "x": 7, "a": 2}, {"u": "Campinas", "m": "2026-04", "c": "Pediatria", "t": "4", "r": 17, "f": 15, "x": 5, "a": 3}, {"u": "São Paulo", "m": "2026-04", "c": "Dermatologia", "t": "14", "r": 38, "f": 5, "x": 12, "a": 0}, {"u": "Campinas", "m": "2026-04", "c": "Dermatologia", "t": "6", "r": 55, "f": 16, "x": 7, "a": 3}, {"u": "São Paulo", "m": "2026-04", "c": "Psiquiatria", "t": "2", "r": 48, "f": 19, "x": 12, "a": 3}, {"u": "Campinas", "m": "2026-04", "c": "Endocrinologia", "t": "3", "r": 39, "f": 13, "x": 8, "a": 5}, {"u": "Campinas", "m": "2026-04", "c": "Dermatologia", "t": "8", "r": 0, "f": 0, "x": 0, "a": 1}, {"u": "Online", "m": "2026-04", "c": "Endocrinologia", "t": "5", "r": 13, "f": 2, "x": 1, "a": 1}, {"u": "Brasília", "m": "2026-04", "c": "Psiquiatria", "t": "1", "r": 10, "f": 2, "x": 0, "a": 0}, {"u": "Online", "m": "2026-04", "c": "Psiquiatria", "t": "4", "r": 12, "f": 2, "x": 2, "a": 3}, {"u": "Campinas", "m": "2026-05", "c": "Pediatria", "t": "3", "r": 36, "f": 12, "x": 17, "a": 17}, {"u": "São Paulo", "m": "2026-05", "c": "Oftalmologia", "t": "3", "r": 53, "f": 28, "x": 4, "a": 1}, {"u": "São Paulo", "m": "2026-05", "c": "Endocrinologia", "t": "3", "r": 40, "f": 34, "x": 16, "a": 1}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "8", "r": 29, "f": 28, "x": 10, "a": 1}, {"u": "São Paulo", "m": "2026-05", "c": "Oftalmologia", "t": "4", "r": 33, "f": 11, "x": 27, "a": 8}, {"u": "Campinas", "m": "2026-05", "c": "Dermatologia", "t": "5", "r": 49, "f": 4, "x": 1, "a": 9}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "7", "r": 38, "f": 19, "x": 5, "a": 2}, {"u": "São Paulo", "m": "2026-05", "c": "Oftalmologia", "t": "5", "r": 49, "f": 24, "x": 9, "a": 7}, {"u": "Campinas", "m": "2026-05", "c": "Dermatologia", "t": "8", "r": 44, "f": 8, "x": 12, "a": 42}, {"u": "São Paulo", "m": "2026-05", "c": "Endocrinologia", "t": "2", "r": 45, "f": 24, "x": 15, "a": 6}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "3", "r": 0, "f": 0, "x": 0, "a": 3}, {"u": "São Paulo", "m": "2026-05", "c": "Oftalmologia", "t": "6", "r": 38, "f": 20, "x": 25, "a": 12}, {"u": "Campinas", "m": "2026-05", "c": "Dermatologia", "t": "4", "r": 31, "f": 3, "x": 34, "a": 0}, {"u": "Campinas", "m": "2026-05", "c": "Psiquiatria", "t": "2", "r": 53, "f": 11, "x": 22, "a": 9}, {"u": "Online", "m": "2026-05", "c": "Psiquiatria", "t": "5", "r": 18, "f": 0, "x": 0, "a": 0}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "9", "r": 28, "f": 8, "x": 19, "a": 6}, {"u": "Brasília", "m": "2026-05", "c": "Dermatologia", "t": "2", "r": 36, "f": 1, "x": 2, "a": 0}, {"u": "Campinas", "m": "2026-05", "c": "Dermatologia", "t": "7", "r": 33, "f": 15, "x": 37, "a": 0}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "5", "r": 31, "f": 2, "x": 10, "a": 4}, {"u": "São Paulo", "m": "2026-05", "c": "Psiquiatria", "t": "3", "r": 49, "f": 17, "x": 23, "a": 8}, {"u": "Campinas", "m": "2026-05", "c": "Dermatologia", "t": "2", "r": 27, "f": 12, "x": 35, "a": 5}, {"u": "Brasília", "m": "2026-05", "c": "Dermatologia", "t": "1", "r": 28, "f": 1, "x": 1, "a": 0}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "19", "r": 74, "f": 26, "x": 9, "a": 18}, {"u": "Campinas", "m": "2026-05", "c": "Dermatologia", "t": "6", "r": 42, "f": 12, "x": 20, "a": 6}, {"u": "São Paulo", "m": "2026-05", "c": "Psiquiatria Infantil", "t": "1", "r": 7, "f": 5, "x": 3, "a": 0}, {"u": "Campinas", "m": "2026-05", "c": "Neuropediatria", "t": "1", "r": 12, "f": 6, "x": 1, "a": 0}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "21", "r": 69, "f": 43, "x": 24, "a": 11}, {"u": "Campinas", "m": "2026-05", "c": "Oftalmologia", "t": "2", "r": 52, "f": 3, "x": 25, "a": 17}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "4", "r": 29, "f": 12, "x": 4, "a": 10}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia Cirurgica", "t": "1", "r": 37, "f": 9, "x": 6, "a": 4}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "14", "r": 34, "f": 11, "x": 5, "a": 3}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "6", "r": 18, "f": 10, "x": 9, "a": 6}, {"u": "Campinas", "m": "2026-05", "c": "Psiquiatria", "t": "4", "r": 15, "f": 1, "x": 6, "a": 5}, {"u": "Campinas", "m": "2026-05", "c": "Pediatria", "t": "2", "r": 11, "f": 7, "x": 5, "a": 9}, {"u": "Online", "m": "2026-05", "c": "Psiquiatria", "t": "2", "r": 15, "f": 5, "x": 0, "a": 4}, {"u": "Online", "m": "2026-05", "c": "Endocrinologia", "t": "6", "r": 17, "f": 0, "x": 0, "a": 1}, {"u": "Campinas", "m": "2026-05", "c": "Endocrinologia", "t": "1", "r": 63, "f": 13, "x": 19, "a": 2}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "15", "r": 38, "f": 6, "x": 15, "a": 1}, {"u": "Brasília", "m": "2026-05", "c": "Endocrinologia", "t": "1", "r": 29, "f": 5, "x": 3, "a": 1}, {"u": "São Paulo", "m": "2026-05", "c": "Oftalmologia", "t": "2", "r": 54, "f": 29, "x": 19, "a": 0}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "12", "r": 33, "f": 8, "x": 21, "a": 1}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "11", "r": 36, "f": 21, "x": 19, "a": 1}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "18", "r": 58, "f": 49, "x": 22, "a": 8}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "13", "r": 33, "f": 7, "x": 24, "a": 3}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia One", "t": "1", "r": 14, "f": 2, "x": 1, "a": 0}, {"u": "Campinas", "m": "2026-05", "c": "Endocrinologia", "t": "2", "r": 47, "f": 16, "x": 18, "a": 13}, {"u": "Campinas", "m": "2026-05", "c": "Dermatologia", "t": "3", "r": 28, "f": 9, "x": 15, "a": 10}, {"u": "São Paulo", "m": "2026-05", "c": "Tricologia", "t": "2", "r": 35, "f": 22, "x": 8, "a": 13}, {"u": "Campinas", "m": "2026-05", "c": "Pediatria", "t": "5", "r": 29, "f": 19, "x": 4, "a": 3}, {"u": "Campinas", "m": "2026-05", "c": "Psiquiatria", "t": "3", "r": 43, "f": 18, "x": 11, "a": 10}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "16", "r": 28, "f": 12, "x": 14, "a": 0}, {"u": "Campinas", "m": "2026-05", "c": "Pediatria", "t": "4", "r": 31, "f": 9, "x": 7, "a": 16}, {"u": "Campinas", "m": "2026-05", "c": "Oftalmologia", "t": "1", "r": 48, "f": 8, "x": 36, "a": 0}, {"u": "Campinas", "m": "2026-05", "c": "Neuropediatria", "t": "2", "r": 15, "f": 2, "x": 7, "a": 1}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "10", "r": 31, "f": 10, "x": 24, "a": 1}, {"u": "São Paulo", "m": "2026-05", "c": "Psiquiatria", "t": "4", "r": 7, "f": 4, "x": 8, "a": 5}, {"u": "São Paulo", "m": "2026-05", "c": "Psiquiatria", "t": "2", "r": 43, "f": 23, "x": 3, "a": 2}, {"u": "São Paulo", "m": "2026-05", "c": "Tricologia", "t": "1", "r": 39, "f": 20, "x": 16, "a": 6}, {"u": "Campinas", "m": "2026-05", "c": "Endocrinologia", "t": "3", "r": 46, "f": 10, "x": 26, "a": 2}, {"u": "Online", "m": "2026-05", "c": "Endocrinologia", "t": "2", "r": 16, "f": 5, "x": 0, "a": 4}, {"u": "Brasília", "m": "2026-05", "c": "Psiquiatria", "t": "1", "r": 11, "f": 1, "x": 6, "a": 0}, {"u": "Brasília", "m": "2026-05", "c": "Oftalmologia", "t": "1", "r": 46, "f": 1, "x": 3, "a": 0}, {"u": "Campinas", "m": "2026-05", "c": "Dermatologia", "t": "9", "r": 0, "f": 0, "x": 1, "a": 1}, {"u": "São Paulo", "m": "2026-05", "c": "Endocrinologia", "t": "4", "r": 29, "f": 23, "x": 14, "a": 0}, {"u": "São Paulo", "m": "2026-05", "c": "Dermatologia", "t": "17", "r": 26, "f": 15, "x": 19, "a": 1}, {"u": "São Paulo", "m": "2026-05", "c": "Nutrologia", "t": "1", "r": 8, "f": 4, "x": 3, "a": 4}, {"u": "Campinas", "m": "2026-05", "c": "Neuropediatria", "t": "3", "r": 15, "f": 2, "x": 4, "a": 0}, {"u": "São Paulo", "m": "2026-06", "c": "Endocrinologia", "t": "3", "r": 45, "f": 8, "x": 39, "a": 44}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "7", "r": 30, "f": 13, "x": 36, "a": 13}, {"u": "Campinas", "m": "2026-06", "c": "Dermatologia", "t": "5", "r": 45, "f": 29, "x": 76, "a": 69}, {"u": "Campinas", "m": "2026-06", "c": "Pediatria", "t": "3", "r": 38, "f": 5, "x": 40, "a": 42}, {"u": "São Paulo", "m": "2026-06", "c": "Oftalmologia", "t": "3", "r": 0, "f": 0, "x": 48, "a": 40}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "14", "r": 64, "f": 48, "x": 26, "a": 8}, {"u": "Online", "m": "2026-06", "c": "Endocrinologia", "t": "1", "r": 10, "f": 5, "x": 4, "a": 0}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "5", "r": 42, "f": 1, "x": 28, "a": 0}, {"u": "Online", "m": "2026-06", "c": "Endocrinologia", "t": "3", "r": 9, "f": 14, "x": 1, "a": 2}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "20", "r": 0, "f": 0, "x": 1, "a": 0}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "9", "r": 54, "f": 25, "x": 40, "a": 8}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia One", "t": "1", "r": 12, "f": 3, "x": 15, "a": 1}, {"u": "Campinas", "m": "2026-06", "c": "Psiquiatria", "t": "2", "r": 47, "f": 16, "x": 48, "a": 4}, {"u": "Campinas", "m": "2026-06", "c": "Oftalmologia", "t": "2", "r": 48, "f": 8, "x": 61, "a": 8}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "11", "r": 38, "f": 7, "x": 39, "a": 3}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "4", "r": 27, "f": 8, "x": 14, "a": 3}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia Cirurgica", "t": "1", "r": 37, "f": 19, "x": 5, "a": 2}, {"u": "Campinas", "m": "2026-06", "c": "Endocrinologia", "t": "2", "r": 54, "f": 12, "x": 28, "a": 24}, {"u": "Online", "m": "2026-06", "c": "Psiquiatria", "t": "1", "r": 21, "f": 0, "x": 7, "a": 1}, {"u": "Campinas", "m": "2026-06", "c": "Psiquiatria", "t": "4", "r": 19, "f": 5, "x": 28, "a": 2}, {"u": "Online", "m": "2026-06", "c": "Psiquiatria", "t": "2", "r": 1, "f": 0, "x": 0, "a": 1}, {"u": "Campinas", "m": "2026-06", "c": "Endocrinologia", "t": "1", "r": 45, "f": 16, "x": 19, "a": 6}, {"u": "Online", "m": "2026-06", "c": "Psiquiatria", "t": "3", "r": 17, "f": 9, "x": 0, "a": 0}, {"u": "Campinas", "m": "2026-06", "c": "Dermatologia", "t": "7", "r": 46, "f": 22, "x": 34, "a": 0}, {"u": "Brasília", "m": "2026-06", "c": "Dermatologia", "t": "2", "r": 18, "f": 5, "x": 8, "a": 10}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "13", "r": 51, "f": 27, "x": 32, "a": 6}, {"u": "São Paulo", "m": "2026-06", "c": "Psiquiatria", "t": "3", "r": 52, "f": 30, "x": 18, "a": 2}, {"u": "Campinas", "m": "2026-06", "c": "Dermatologia", "t": "4", "r": 35, "f": 11, "x": 60, "a": 0}, {"u": "Brasília", "m": "2026-06", "c": "Dermatologia", "t": "1", "r": 14, "f": 2, "x": 5, "a": 16}, {"u": "São Paulo", "m": "2026-06", "c": "Psiquiatria", "t": "4", "r": 15, "f": 16, "x": 28, "a": 0}, {"u": "Campinas", "m": "2026-06", "c": "Endocrinologia", "t": "3", "r": 36, "f": 14, "x": 11, "a": 1}, {"u": "Campinas", "m": "2026-06", "c": "Psiquiatria", "t": "3", "r": 0, "f": 0, "x": 0, "a": 1}, {"u": "São Paulo", "m": "2026-06", "c": "Psiquiatria Infantil", "t": "1", "r": 10, "f": 4, "x": 3, "a": 0}, {"u": "Campinas", "m": "2026-06", "c": "Neuropediatria", "t": "2", "r": 1, "f": 0, "x": 18, "a": 0}, {"u": "Campinas", "m": "2026-06", "c": "Pediatria", "t": "4", "r": 16, "f": 29, "x": 2, "a": 3}, {"u": "Brasília", "m": "2026-06", "c": "Dermatologia", "t": "3", "r": 74, "f": 37, "x": 19, "a": 0}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "8", "r": 28, "f": 14, "x": 19, "a": 0}, {"u": "Campinas", "m": "2026-06", "c": "Dermatologia", "t": "3", "r": 16, "f": 18, "x": 12, "a": 11}, {"u": "São Paulo", "m": "2026-06", "c": "Endocrinologia", "t": "2", "r": 42, "f": 25, "x": 5, "a": 0}, {"u": "São Paulo", "m": "2026-06", "c": "Oftalmologia", "t": "6", "r": 37, "f": 36, "x": 15, "a": 0}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "18", "r": 35, "f": 13, "x": 27, "a": 4}, {"u": "Online", "m": "2026-06", "c": "Endocrinologia", "t": "2", "r": 11, "f": 3, "x": 11, "a": 0}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "15", "r": 30, "f": 15, "x": 32, "a": 0}, {"u": "Online", "m": "2026-06", "c": "Endocrinologia", "t": "4", "r": 11, "f": 2, "x": 0, "a": 11}, {"u": "Campinas", "m": "2026-06", "c": "Pediatria", "t": "5", "r": 17, "f": 21, "x": 2, "a": 1}, {"u": "Brasília", "m": "2026-06", "c": "Endocrinologia", "t": "1", "r": 27, "f": 8, "x": 30, "a": 1}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "6", "r": 36, "f": 4, "x": 24, "a": 0}, {"u": "São Paulo", "m": "2026-06", "c": "Oftalmologia", "t": "2", "r": 31, "f": 37, "x": 16, "a": 0}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "21", "r": 34, "f": 12, "x": 32, "a": 0}, {"u": "Brasília", "m": "2026-06", "c": "Oftalmologia", "t": "1", "r": 0, "f": 0, "x": 0, "a": 1}, {"u": "São Paulo", "m": "2026-06", "c": "Nutrologia", "t": "1", "r": 11, "f": 5, "x": 5, "a": 0}, {"u": "São Paulo", "m": "2026-06", "c": "Oftalmologia", "t": "4", "r": 57, "f": 32, "x": 21, "a": 5}, {"u": "Campinas", "m": "2026-06", "c": "Oftalmologia", "t": "1", "r": 0, "f": 0, "x": 8, "a": 1}, {"u": "Campinas", "m": "2026-06", "c": "Neuropediatria", "t": "1", "r": 0, "f": 0, "x": 6, "a": 7}, {"u": "São Paulo", "m": "2026-06", "c": "Psiquiatria", "t": "2", "r": 34, "f": 32, "x": 15, "a": 0}, {"u": "Campinas", "m": "2026-06", "c": "Dermatologia", "t": "6", "r": 53, "f": 39, "x": 23, "a": 4}, {"u": "São Paulo", "m": "2026-06", "c": "Oftalmologia", "t": "5", "r": 42, "f": 17, "x": 16, "a": 0}, {"u": "São Paulo", "m": "2026-06", "c": "Tricologia", "t": "2", "r": 37, "f": 11, "x": 40, "a": 0}, {"u": "São Paulo", "m": "2026-06", "c": "Tricologia", "t": "1", "r": 44, "f": 16, "x": 36, "a": 10}, {"u": "Online", "m": "2026-06", "c": "Endocrinologia", "t": "5", "r": 15, "f": 5, "x": 3, "a": 2}, {"u": "Brasília", "m": "2026-06", "c": "Psiquiatria", "t": "1", "r": 15, "f": 3, "x": 11, "a": 0}, {"u": "Online", "m": "2026-06", "c": "Psiquiatria", "t": "4", "r": 11, "f": 10, "x": 1, "a": 4}, {"u": "São Paulo", "m": "2026-06", "c": "Endocrinologia", "t": "4", "r": 29, "f": 23, "x": 27, "a": 0}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "10", "r": 38, "f": 36, "x": 53, "a": 1}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "19", "r": 37, "f": 10, "x": 40, "a": 0}, {"u": "São Paulo", "m": "2026-06", "c": "Dermatologia", "t": "17", "r": 31, "f": 17, "x": 17, "a": 2}, {"u": "Campinas", "m": "2026-06", "c": "Dermatologia", "t": "9", "r": 67, "f": 16, "x": 109, "a": 26}, {"u": "Campinas", "m": "2026-06", "c": "Neuropediatria", "t": "3", "r": 0, "f": 0, "x": 12, "a": 0}, {"u": "Campinas", "m": "2026-06", "c": "Dermatologia", "t": "8", "r": 0, "f": 0, "x": 5, "a": 33}, {"u": "São Paulo", "m": "2026-07", "c": "Oftalmologia", "t": "3", "r": 0, "f": 0, "x": 4, "a": 29}, {"u": "São Paulo", "m": "2026-07", "c": "Endocrinologia", "t": "3", "r": 0, "f": 0, "x": 5, "a": 26}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "7", "r": 0, "f": 0, "x": 2, "a": 13}, {"u": "Campinas", "m": "2026-07", "c": "Dermatologia", "t": "5", "r": 0, "f": 0, "x": 7, "a": 50}, {"u": "Campinas", "m": "2026-07", "c": "Dermatologia", "t": "8", "r": 0, "f": 0, "x": 1, "a": 18}, {"u": "Campinas", "m": "2026-07", "c": "Pediatria", "t": "3", "r": 0, "f": 0, "x": 5, "a": 31}, {"u": "Online", "m": "2026-07", "c": "Endocrinologia", "t": "7", "r": 0, "f": 0, "x": 0, "a": 12}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "3", "r": 0, "f": 0, "x": 0, "a": 5}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "5", "r": 0, "f": 0, "x": 3, "a": 66}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "12", "r": 0, "f": 0, "x": 11, "a": 169}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "9", "r": 0, "f": 0, "x": 5, "a": 102}, {"u": "Campinas", "m": "2026-07", "c": "Psiquiatria", "t": "3", "r": 0, "f": 0, "x": 8, "a": 205}, {"u": "Campinas", "m": "2026-07", "c": "Dermatologia", "t": "9", "r": 0, "f": 0, "x": 1, "a": 50}, {"u": "Campinas", "m": "2026-07", "c": "Dermatologia", "t": "7", "r": 0, "f": 0, "x": 3, "a": 47}, {"u": "Campinas", "m": "2026-07", "c": "Dermatologia", "t": "6", "r": 0, "f": 0, "x": 2, "a": 42}, {"u": "São Paulo", "m": "2026-07", "c": "Oftalmologia", "t": "4", "r": 0, "f": 0, "x": 5, "a": 88}, {"u": "Campinas", "m": "2026-07", "c": "Neuropediatria", "t": "4", "r": 0, "f": 0, "x": 0, "a": 23}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia Cirurgica", "t": "1", "r": 0, "f": 0, "x": 0, "a": 43}, {"u": "Campinas", "m": "2026-07", "c": "Psiquiatria", "t": "2", "r": 0, "f": 0, "x": 2, "a": 99}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "4", "r": 0, "f": 0, "x": 58, "a": 47}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "14", "r": 0, "f": 0, "x": 1, "a": 52}, {"u": "Campinas", "m": "2026-07", "c": "Oftalmologia", "t": "2", "r": 0, "f": 0, "x": 7, "a": 72}, {"u": "Campinas", "m": "2026-07", "c": "Psiquiatria", "t": "4", "r": 0, "f": 0, "x": 0, "a": 42}, {"u": "São Paulo", "m": "2026-07", "c": "Oftalmologia", "t": "2", "r": 0, "f": 0, "x": 2, "a": 66}, {"u": "São Paulo", "m": "2026-07", "c": "Psiquiatria", "t": "3", "r": 0, "f": 0, "x": 7, "a": 125}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "13", "r": 0, "f": 0, "x": 0, "a": 48}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "16", "r": 0, "f": 0, "x": 0, "a": 39}, {"u": "Brasília", "m": "2026-07", "c": "Oftalmologia", "t": "1", "r": 0, "f": 0, "x": 0, "a": 64}, {"u": "Brasília", "m": "2026-07", "c": "Dermatologia", "t": "2", "r": 0, "f": 0, "x": 0, "a": 25}, {"u": "Brasília", "m": "2026-07", "c": "Dermatologia", "t": "1", "r": 0, "f": 0, "x": 0, "a": 7}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "21", "r": 0, "f": 0, "x": 0, "a": 34}, {"u": "São Paulo", "m": "2026-07", "c": "Psiquiatria Infantil", "t": "1", "r": 0, "f": 0, "x": 0, "a": 12}, {"u": "Campinas", "m": "2026-07", "c": "Neuropediatria", "t": "1", "r": 0, "f": 0, "x": 0, "a": 20}, {"u": "São Paulo", "m": "2026-07", "c": "Psiquiatria", "t": "4", "r": 0, "f": 0, "x": 1, "a": 36}, {"u": "Campinas", "m": "2026-07", "c": "Endocrinologia", "t": "2", "r": 0, "f": 0, "x": 0, "a": 129}, {"u": "Brasília", "m": "2026-07", "c": "Dermatologia", "t": "3", "r": 0, "f": 0, "x": 1, "a": 44}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "11", "r": 0, "f": 0, "x": 2, "a": 38}, {"u": "São Paulo", "m": "2026-07", "c": "Oftalmologia", "t": "6", "r": 0, "f": 0, "x": 1, "a": 17}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "8", "r": 0, "f": 0, "x": 6, "a": 124}, {"u": "Campinas", "m": "2026-07", "c": "Dermatologia", "t": "2", "r": 0, "f": 0, "x": 0, "a": 1}, {"u": "Campinas", "m": "2026-07", "c": "Neuropediatria", "t": "2", "r": 0, "f": 0, "x": 1, "a": 21}, {"u": "Campinas", "m": "2026-07", "c": "Dermatologia", "t": "3", "r": 0, "f": 0, "x": 1, "a": 3}, {"u": "Online", "m": "2026-07", "c": "Psiquiatria", "t": "5", "r": 0, "f": 0, "x": 0, "a": 6}, {"u": "Online", "m": "2026-07", "c": "Endocrinologia", "t": "6", "r": 0, "f": 0, "x": 2, "a": 12}, {"u": "Campinas", "m": "2026-07", "c": "Pediatria", "t": "5", "r": 0, "f": 0, "x": 0, "a": 54}, {"u": "Campinas", "m": "2026-07", "c": "Endocrinologia", "t": "1", "r": 0, "f": 0, "x": 0, "a": 89}, {"u": "Brasília", "m": "2026-07", "c": "Endocrinologia", "t": "1", "r": 0, "f": 0, "x": 1, "a": 92}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "15", "r": 0, "f": 0, "x": 0, "a": 73}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "6", "r": 0, "f": 0, "x": 0, "a": 2}, {"u": "São Paulo", "m": "2026-07", "c": "Endocrinologia", "t": "5", "r": 0, "f": 0, "x": 2, "a": 59}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "19", "r": 0, "f": 0, "x": 0, "a": 12}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia One", "t": "1", "r": 0, "f": 0, "x": 3, "a": 54}, {"u": "São Paulo", "m": "2026-07", "c": "Endocrinologia", "t": "2", "r": 0, "f": 0, "x": 0, "a": 51}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "20", "r": 0, "f": 0, "x": 2, "a": 135}, {"u": "São Paulo", "m": "2026-07", "c": "Oftalmologia", "t": "5", "r": 0, "f": 0, "x": 1, "a": 55}, {"u": "Campinas", "m": "2026-07", "c": "Pediatria", "t": "4", "r": 0, "f": 0, "x": 0, "a": 29}, {"u": "São Paulo", "m": "2026-07", "c": "Tricologia", "t": "2", "r": 0, "f": 0, "x": 1, "a": 79}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "18", "r": 0, "f": 0, "x": 0, "a": 1}, {"u": "Campinas", "m": "2026-07", "c": "Dermatologia", "t": "4", "r": 0, "f": 0, "x": 0, "a": 95}, {"u": "Campinas", "m": "2026-07", "c": "Endocrinologia", "t": "3", "r": 0, "f": 0, "x": 2, "a": 101}, {"u": "São Paulo", "m": "2026-07", "c": "Psiquiatria", "t": "2", "r": 0, "f": 0, "x": 1, "a": 68}, {"u": "São Paulo", "m": "2026-07", "c": "Endocrinologia", "t": "4", "r": 0, "f": 0, "x": 4, "a": 82}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "17", "r": 0, "f": 0, "x": 0, "a": 5}, {"u": "São Paulo", "m": "2026-07", "c": "Nutrologia", "t": "1", "r": 0, "f": 0, "x": 2, "a": 21}, {"u": "Campinas", "m": "2026-07", "c": "Neuropediatria", "t": "3", "r": 0, "f": 0, "x": 0, "a": 25}, {"u": "Campinas", "m": "2026-07", "c": "Pediatria", "t": "6", "r": 0, "f": 0, "x": 0, "a": 10}, {"u": "Brasília", "m": "2026-07", "c": "Psiquiatria", "t": "1", "r": 0, "f": 0, "x": 0, "a": 24}, {"u": "São Paulo", "m": "2026-07", "c": "Dermatologia", "t": "10", "r": 0, "f": 0, "x": 0, "a": 25}, {"u": "São Paulo", "m": "2026-07", "c": "Tricologia", "t": "1", "r": 0, "f": 0, "x": 0, "a": 52}, {"u": "Campinas", "m": "2026-08", "c": "Psiquiatria", "t": "3", "r": 0, "f": 0, "x": 0, "a": 35}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia", "t": "10", "r": 0, "f": 0, "x": 2, "a": 49}, {"u": "São Paulo", "m": "2026-08", "c": "Tricologia", "t": "1", "r": 0, "f": 0, "x": 0, "a": 54}, {"u": "Brasília", "m": "2026-08", "c": "Oftalmologia", "t": "1", "r": 0, "f": 0, "x": 0, "a": 7}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia", "t": "12", "r": 0, "f": 0, "x": 1, "a": 15}, {"u": "São Paulo", "m": "2026-08", "c": "Tricologia", "t": "2", "r": 0, "f": 0, "x": 1, "a": 49}, {"u": "Campinas", "m": "2026-08", "c": "Neuropediatria", "t": "4", "r": 0, "f": 0, "x": 0, "a": 17}, {"u": "Campinas", "m": "2026-08", "c": "Psiquiatria", "t": "2", "r": 0, "f": 0, "x": 0, "a": 63}, {"u": "São Paulo", "m": "2026-08", "c": "Oftalmologia", "t": "3", "r": 0, "f": 0, "x": 3, "a": 90}, {"u": "Campinas", "m": "2026-08", "c": "Oftalmologia", "t": "2", "r": 0, "f": 0, "x": 2, "a": 43}, {"u": "Campinas", "m": "2026-08", "c": "Dermatologia", "t": "5", "r": 0, "f": 0, "x": 1, "a": 47}, {"u": "São Paulo", "m": "2026-08", "c": "Endocrinologia", "t": "3", "r": 0, "f": 0, "x": 0, "a": 6}, {"u": "Campinas", "m": "2026-08", "c": "Dermatologia", "t": "8", "r": 0, "f": 0, "x": 0, "a": 17}, {"u": "Campinas", "m": "2026-08", "c": "Pediatria", "t": "3", "r": 0, "f": 0, "x": 1, "a": 0}, {"u": "Campinas", "m": "2026-08", "c": "Psiquiatria", "t": "4", "r": 0, "f": 0, "x": 0, "a": 7}, {"u": "São Paulo", "m": "2026-08", "c": "Psiquiatria", "t": "3", "r": 0, "f": 0, "x": 0, "a": 16}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia", "t": "5", "r": 0, "f": 0, "x": 1, "a": 40}, {"u": "Campinas", "m": "2026-08", "c": "Dermatologia", "t": "4", "r": 0, "f": 0, "x": 1, "a": 15}, {"u": "Brasília", "m": "2026-08", "c": "Dermatologia", "t": "2", "r": 0, "f": 0, "x": 0, "a": 6}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia", "t": "9", "r": 0, "f": 0, "x": 1, "a": 26}, {"u": "Campinas", "m": "2026-08", "c": "Dermatologia", "t": "7", "r": 0, "f": 0, "x": 0, "a": 50}, {"u": "São Paulo", "m": "2026-08", "c": "Psiquiatria Infantil", "t": "1", "r": 0, "f": 0, "x": 0, "a": 13}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia", "t": "19", "r": 0, "f": 0, "x": 0, "a": 1}, {"u": "Campinas", "m": "2026-08", "c": "Endocrinologia", "t": "2", "r": 0, "f": 0, "x": 0, "a": 82}, {"u": "São Paulo", "m": "2026-08", "c": "Oftalmologia", "t": "6", "r": 0, "f": 0, "x": 0, "a": 6}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia Cirurgica", "t": "1", "r": 0, "f": 0, "x": 1, "a": 38}, {"u": "Campinas", "m": "2026-08", "c": "Endocrinologia", "t": "1", "r": 0, "f": 0, "x": 0, "a": 30}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia", "t": "15", "r": 0, "f": 0, "x": 3, "a": 41}, {"u": "Campinas", "m": "2026-08", "c": "Pediatria", "t": "5", "r": 0, "f": 0, "x": 0, "a": 35}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia", "t": "13", "r": 0, "f": 0, "x": 0, "a": 5}, {"u": "São Paulo", "m": "2026-08", "c": "Oftalmologia", "t": "2", "r": 0, "f": 0, "x": 0, "a": 3}, {"u": "Brasília", "m": "2026-08", "c": "Endocrinologia", "t": "1", "r": 0, "f": 0, "x": 1, "a": 20}, {"u": "Campinas", "m": "2026-08", "c": "Neuropediatria", "t": "2", "r": 0, "f": 0, "x": 0, "a": 18}, {"u": "São Paulo", "m": "2026-08", "c": "Endocrinologia", "t": "2", "r": 0, "f": 0, "x": 2, "a": 93}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia", "t": "8", "r": 0, "f": 0, "x": 3, "a": 31}, {"u": "São Paulo", "m": "2026-08", "c": "Endocrinologia", "t": "5", "r": 0, "f": 0, "x": 4, "a": 57}, {"u": "Campinas", "m": "2026-08", "c": "Pediatria", "t": "4", "r": 0, "f": 0, "x": 0, "a": 9}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia", "t": "11", "r": 0, "f": 0, "x": 0, "a": 17}, {"u": "Brasília", "m": "2026-08", "c": "Dermatologia", "t": "3", "r": 0, "f": 0, "x": 0, "a": 7}, {"u": "Campinas", "m": "2026-08", "c": "Dermatologia", "t": "3", "r": 0, "f": 0, "x": 0, "a": 1}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia", "t": "6", "r": 0, "f": 0, "x": 1, "a": 2}, {"u": "São Paulo", "m": "2026-08", "c": "Nutrologia", "t": "1", "r": 0, "f": 0, "x": 0, "a": 14}, {"u": "Campinas", "m": "2026-08", "c": "Dermatologia", "t": "9", "r": 0, "f": 0, "x": 1, "a": 52}, {"u": "São Paulo", "m": "2026-08", "c": "Endocrinologia", "t": "4", "r": 0, "f": 0, "x": 0, "a": 9}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia", "t": "16", "r": 0, "f": 0, "x": 0, "a": 2}, {"u": "Campinas", "m": "2026-08", "c": "Neuropediatria", "t": "1", "r": 0, "f": 0, "x": 0, "a": 14}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia One", "t": "1", "r": 0, "f": 0, "x": 0, "a": 30}, {"u": "Campinas", "m": "2026-08", "c": "Dermatologia", "t": "6", "r": 0, "f": 0, "x": 0, "a": 6}, {"u": "São Paulo", "m": "2026-08", "c": "Oftalmologia", "t": "5", "r": 0, "f": 0, "x": 0, "a": 16}, {"u": "São Paulo", "m": "2026-08", "c": "Psiquiatria", "t": "2", "r": 0, "f": 0, "x": 0, "a": 8}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia", "t": "20", "r": 0, "f": 0, "x": 2, "a": 33}, {"u": "Campinas", "m": "2026-08", "c": "Endocrinologia", "t": "3", "r": 0, "f": 0, "x": 0, "a": 26}, {"u": "Campinas", "m": "2026-08", "c": "Pediatria", "t": "6", "r": 0, "f": 0, "x": 0, "a": 1}, {"u": "Brasília", "m": "2026-08", "c": "Psiquiatria", "t": "1", "r": 0, "f": 0, "x": 0, "a": 16}, {"u": "São Paulo", "m": "2026-08", "c": "Dermatologia", "t": "17", "r": 0, "f": 0, "x": 1, "a": 23}];
+
+var CURSOS   = [...new Set(RAW.map(function(r){return r.c;}))].sort();
+var MESES    = [...new Set(RAW.map(function(r){return r.m;}))].sort();
+
+var TURMAS_BY_CURSO = {};
+RAW.forEach(function(r){
+  if(!TURMAS_BY_CURSO[r.c]) TURMAS_BY_CURSO[r.c] = new Set();
+  TURMAS_BY_CURSO[r.c].add(r.t);
+});
+Object.keys(TURMAS_BY_CURSO).forEach(function(c){
+  TURMAS_BY_CURSO[c] = [...TURMAS_BY_CURSO[c]].sort(function(a,b){return +a - +b;});
+});
+
+var CURSO_COLORS = {
+  'Dermatologia':'#1A2459','Dermatologia Cirurgica':'#253070','Dermatologia One':'#2D3A8C',
+  'Oftalmologia':'#F5C518','Psiquiatria':'#3182CE','Psiquiatria Infantil':'#63B3ED',
+  'Endocrinologia':'#38A169','Pediatria':'#68D391','Neuropediatria':'#ED8936',
+  'Tricologia':'#E53E3E','Nutrologia':'#9F7AEA'
+};
+var TURMA_PAL = ['#1A2459','#F5C518','#3182CE','#38A169','#E53E3E','#ED8936','#9F7AEA','#63B3ED','#68D391','#253070','#2D3A8C','#E2A800'];
+var CHARTS = {};
+
+function dChart(id){ if(CHARTS[id]){CHARTS[id].destroy();delete CHARTS[id];} }
+function pct(n,d){ return d===0?0:Math.round(n/d*1000)/10; }
+function fmtN(n){ return n.toLocaleString('pt-BR'); }
+function fmtMes(m){
+  var p=m.split('-'), names=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return names[parseInt(p[1])-1]+'/'+p[0].slice(2);
+}
+function heatBg(v,max){
+  if(v===0) return '#F5F7FC';
+  var t=Math.min(v/max,1);
+  return 'rgb('+Math.round(245-t*219)+','+Math.round(247-t*211)+','+Math.round(252-t*163)+')';
+}
+function heatFg(v,max){ return v/max>0.5?'#FFFFFF':'#1A2459'; }
+
+// Populate selects
+CURSOS.forEach(function(c){
+  ['fCurso','tCurso'].forEach(function(id){
+    var o=document.createElement('option'); o.value=c; o.textContent=c;
+    document.getElementById(id).appendChild(o);
+  });
+});
+MESES.forEach(function(m){
+  var label=fmtMes(m);
+  ['fMesStart','tMesStart'].forEach(function(id){
+    var o=document.createElement('option'); o.value=m; o.textContent=label;
+    document.getElementById(id).appendChild(o);
+  });
+  ['fMesEnd','tMesEnd'].forEach(function(id){
+    var o=document.createElement('option'); o.value=m; o.textContent=label;
+    document.getElementById(id).appendChild(o);
+  });
+});
+
+function switchTab(tab, btn){
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
+  btn.classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='geral') updateGeral();
+  if(tab==='turma') updateTurma();
+}
+
+function filterGeral(){
+  var u=document.getElementById('fUnidade').value;
+  var c=document.getElementById('fCurso').value;
+  var ms=document.getElementById('fMesStart').value;
+  var me=document.getElementById('fMesEnd').value;
+  return RAW.filter(function(r){
+    if(u && r.u!==u) return false;
+    if(c && r.c!==c) return false;
+    if(ms && r.m<ms) return false;
+    if(me && r.m>me) return false;
+    return true;
+  });
+}
+
+function resetGeral(){
+  ['fUnidade','fCurso','fMesStart','fMesEnd'].forEach(function(id){document.getElementById(id).value='';});
+  updateGeral();
+}
+
+function updateGeral(){
+  var data=filterGeral();
+  var totR=0,totF=0,totX=0,totA=0;
+  data.forEach(function(r){totR+=r.r;totF+=r.f;totX+=r.x;totA+=r.a;});
+  var totO=totR+totF+totX;
+
+  document.getElementById('kpiR').textContent=fmtN(totR);
+  document.getElementById('kpiF').textContent=fmtN(totF);
+  document.getElementById('kpiX').textContent=fmtN(totX);
+  document.getElementById('kpiA').textContent=fmtN(totA);
+  document.getElementById('kpiRPct').textContent=pct(totR,totO)+'% de realização';
+  document.getElementById('kpiFPct').textContent=pct(totF,totO)+'% de falta';
+  document.getElementById('kpiXPct').textContent=pct(totX,totO)+'% cancelado';
+  document.getElementById('kpiAPct').textContent=pct(totA,totO+totA)+'% do total';
+
+  var byCurso={};
+  data.forEach(function(r){
+    if(!byCurso[r.c]) byCurso[r.c]={r:0,f:0,x:0,a:0};
+    byCurso[r.c].r+=r.r; byCurso[r.c].f+=r.f; byCurso[r.c].x+=r.x; byCurso[r.c].a+=r.a;
+  });
+  var cursos=Object.keys(byCurso).sort(function(a,b){return byCurso[b].r-byCurso[a].r;});
+
+  dChart('barCurso');
+  CHARTS['barCurso']=new Chart(document.getElementById('chartBarCurso'),{
+    type:'bar',
+    data:{labels:cursos,datasets:[{data:cursos.map(function(c){return byCurso[c].r;}),backgroundColor:cursos.map(function(c){return CURSO_COLORS[c]||'#1A2459';}),borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+fmtN(ctx.raw)+' realizados';}}}},
+      scales:{x:{ticks:{font:{size:10},color:'#718096'},grid:{display:false}},y:{ticks:{font:{size:10},color:'#718096'},grid:{color:'#F0F4FA'}}}}
+  });
+
+  dChart('donut');
+  CHARTS['donut']=new Chart(document.getElementById('chartDonut'),{
+    type:'doughnut',
+    data:{labels:['Realizado','Falta','Cancelado','Agendado'],datasets:[{data:[totR,totF,totX,totA],backgroundColor:['#1A2459','#E53E3E','#ED8936','#F5C518'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false}}}
+  });
+
+  var sc=Object.keys(byCurso).sort(function(a,b){
+    var ta=byCurso[a].r+byCurso[a].f+byCurso[a].x, tb=byCurso[b].r+byCurso[b].f+byCurso[b].x;
+    return pct(byCurso[b].r,tb)-pct(byCurso[a].r,ta);
+  });
+  dChart('stacked');
+  CHARTS['stacked']=new Chart(document.getElementById('chartStacked'),{
+    type:'bar',
+    data:{labels:sc,datasets:[
+      {label:'Realizado %',data:sc.map(function(c){var t=byCurso[c].r+byCurso[c].f+byCurso[c].x;return pct(byCurso[c].r,t);}),backgroundColor:'#1A2459',stack:'s',borderRadius:{topLeft:4,topRight:4}},
+      {label:'Falta %',data:sc.map(function(c){var t=byCurso[c].r+byCurso[c].f+byCurso[c].x;return pct(byCurso[c].f,t);}),backgroundColor:'#E53E3E',stack:'s'},
+      {label:'Cancelado %',data:sc.map(function(c){var t=byCurso[c].r+byCurso[c].f+byCurso[c].x;return pct(byCurso[c].x,t);}),backgroundColor:'#ED8936',stack:'s'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12,padding:16}}},
+      scales:{x:{stacked:true,ticks:{font:{size:10},color:'#718096'},grid:{display:false}},y:{stacked:true,max:100,ticks:{font:{size:10},color:'#718096',callback:function(v){return v+'%';}},grid:{color:'#F0F4FA'}}}}
+  });
+
+  var byMes={};
+  data.forEach(function(r){
+    if(!byMes[r.m]) byMes[r.m]={r:0,f:0,x:0,a:0};
+    byMes[r.m].r+=r.r; byMes[r.m].f+=r.f; byMes[r.m].x+=r.x; byMes[r.m].a+=r.a;
+  });
+  var meses=Object.keys(byMes).sort();
+  dChart('line');
+  CHARTS['line']=new Chart(document.getElementById('chartLine'),{
+    type:'line',
+    data:{labels:meses.map(fmtMes),datasets:[
+      {label:'Realizado',data:meses.map(function(m){return byMes[m].r;}),borderColor:'#1A2459',backgroundColor:'rgba(26,36,89,0.08)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:true},
+      {label:'Falta',data:meses.map(function(m){return byMes[m].f;}),borderColor:'#E53E3E',backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:0.3,borderDash:[4,3]},
+      {label:'Cancelado',data:meses.map(function(m){return byMes[m].x;}),borderColor:'#ED8936',backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:0.3,borderDash:[4,3]},
+      {label:'Agendado',data:meses.map(function(m){return byMes[m].a;}),borderColor:'#B8940A',backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:0.3,borderDash:[2,4]}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12,padding:16}}},
+      scales:{x:{ticks:{font:{size:9},color:'#718096',maxRotation:45},grid:{display:false}},y:{ticks:{font:{size:10},color:'#718096'},grid:{color:'#F0F4FA'}}}}
+  });
+
+  var rankData=Object.keys(byCurso).map(function(c){
+    var b=byCurso[c], t=b.r+b.f+b.x;
+    return {curso:c,r:b.r,f:b.f,x:b.x,t:t,pr:pct(b.r,t),pf:pct(b.f,t),px:pct(b.x,t)};
+  }).sort(function(a,b){return b.pr-a.pr;});
+  var maxR=Math.max.apply(null,rankData.map(function(d){return d.r;}));
+  var body=document.getElementById('rankingBody');
+  body.innerHTML='';
+  rankData.forEach(function(d,i){
+    var color=CURSO_COLORS[d.curso]||'#1A2459';
+    body.innerHTML+='<tr><td class="rank-num">'+(i+1)+'</td><td><span class="curso-tag" style="background:'+color+'22;color:'+color+'">'+d.curso+'</span></td><td style="font-weight:600">'+fmtN(d.r)+'</td><td style="color:#38A169;font-weight:700">'+d.pr+'%</td><td style="color:#E53E3E">'+d.pf+'%</td><td style="color:#ED8936">'+d.px+'%</td><td style="width:80px"><div class="bar-mini"><div class="bar-mini-fill" style="width:'+Math.round(d.r/maxR*100)+'%;background:'+color+'"></div></div></td></tr>';
+  });
+
+  var heatData={};
+  data.forEach(function(r){
+    if(!heatData[r.c]) heatData[r.c]={};
+    if(!heatData[r.c][r.m]) heatData[r.c][r.m]=0;
+    heatData[r.c][r.m]+=r.r;
+  });
+  var heatMax=Math.max.apply(null,Object.keys(byCurso).map(function(c){
+    return Math.max.apply(null, meses.map(function(m){return (heatData[c]||{})[m]||0;}));
+  }));
+  var ht=document.getElementById('heatmapTable');
+  var hdr='<tr><th class="row-header">Curso</th>';
+  meses.forEach(function(m){hdr+='<th>'+fmtMes(m)+'</th>';});
+  ht.innerHTML=hdr+'</tr>';
+  Object.keys(byCurso).sort().forEach(function(c){
+    var row='<tr><td class="row-header">'+c+'</td>';
+    meses.forEach(function(m){
+      var v=(heatData[c]||{})[m]||0;
+      row+='<td style="background:'+heatBg(v,heatMax)+';color:'+heatFg(v,heatMax)+'" title="'+c+' '+fmtMes(m)+': '+v+'">'+( v||'')+'</td>';
+    });
+    ht.innerHTML+=row+'</tr>';
+  });
+
+  var byUnidade={};
+  data.forEach(function(r){
+    if(!byUnidade[r.u]) byUnidade[r.u]={};
+    if(!byUnidade[r.u][r.c]) byUnidade[r.u][r.c]=0;
+    byUnidade[r.u][r.c]+=r.r;
+  });
+  var unidades=Object.keys(byUnidade).sort();
+  var topC=cursos.slice(0,6);
+  dChart('unidade');
+  CHARTS['unidade']=new Chart(document.getElementById('chartUnidade'),{
+    type:'bar',
+    data:{labels:unidades,datasets:topC.map(function(c){return {label:c,data:unidades.map(function(u){return (byUnidade[u]||{})[c]||0;}),backgroundColor:CURSO_COLORS[c]||'#1A2459',stack:'s'};})},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12,padding:14}},tooltip:{mode:'index',intersect:false}},
+      scales:{x:{stacked:true,ticks:{font:{size:11},color:'#718096'},grid:{display:false}},y:{stacked:true,ticks:{font:{size:10},color:'#718096'},grid:{color:'#F0F4FA'}}}}
+  });
+}
+
+var selectedTurma='all';
+
+function resetTurma(){
+  ['tUnidade','tCurso','tMesStart','tMesEnd'].forEach(function(id){document.getElementById(id).value='';});
+  selectedTurma='all';
+  updateTurmaFilters();
+}
+
+function updateTurmaFilters(){
+  selectedTurma='all';
+  var curso=document.getElementById('tCurso').value;
+  if(curso){
+    document.getElementById('turmaSection').style.display='block';
+    document.getElementById('turmaEmpty').style.display='none';
+    buildPills(curso);
+    updateTurma();
+  } else {
+    document.getElementById('turmaSection').style.display='none';
+    document.getElementById('turmaEmpty').style.display='block';
+  }
+}
+
+function buildPills(curso){
+  var turmas=TURMAS_BY_CURSO[curso]||[];
+  var wrap=document.getElementById('turmaPills');
+  wrap.innerHTML='<button class="turma-pill all-pill active" onclick="selectTurma(\'all\',this)">Todas</button>';
+  turmas.forEach(function(t){
+    wrap.innerHTML+='<button class="turma-pill" onclick="selectTurma(\''+t+'\',this)">Turma '+t+'</button>';
+  });
+}
+
+function selectTurma(t,btn){
+  selectedTurma=t;
+  document.querySelectorAll('.turma-pill').forEach(function(p){p.classList.remove('active');});
+  btn.classList.add('active');
+  updateTurma();
+}
+
+function filterTurma(inclTurma){
+  var u=document.getElementById('tUnidade').value;
+  var c=document.getElementById('tCurso').value;
+  var ms=document.getElementById('tMesStart').value;
+  var me=document.getElementById('tMesEnd').value;
+  return RAW.filter(function(r){
+    if(u && r.u!==u) return false;
+    if(c && r.c!==c) return false;
+    if(ms && r.m<ms) return false;
+    if(me && r.m>me) return false;
+    if(inclTurma && selectedTurma!=='all' && r.t!==selectedTurma) return false;
+    return true;
+  });
+}
+
+function updateTurma(){
+  var curso=document.getElementById('tCurso').value;
+  if(!curso) return;
+
+  var dataSelected=filterTurma(true);
+  var dataAll=filterTurma(false);
+
+  var totR=0,totF=0,totX=0,totA=0;
+  dataSelected.forEach(function(r){totR+=r.r;totF+=r.f;totX+=r.x;totA+=r.a;});
+  var totO=totR+totF+totX;
+  document.getElementById('tKpiR').textContent=fmtN(totR);
+  document.getElementById('tKpiF').textContent=fmtN(totF);
+  document.getElementById('tKpiX').textContent=fmtN(totX);
+  document.getElementById('tKpiA').textContent=fmtN(totA);
+  document.getElementById('tKpiRPct').textContent=pct(totR,totO)+'% de realização';
+  document.getElementById('tKpiFPct').textContent=pct(totF,totO)+'% de falta';
+  document.getElementById('tKpiXPct').textContent=pct(totX,totO)+'% cancelado';
+  document.getElementById('tKpiAPct').textContent=pct(totA,totO+totA)+'% do total';
+
+  var byTurma={};
+  dataAll.forEach(function(r){
+    if(!byTurma[r.t]) byTurma[r.t]={r:0,f:0,x:0,a:0};
+    byTurma[r.t].r+=r.r; byTurma[r.t].f+=r.f; byTurma[r.t].x+=r.x; byTurma[r.t].a+=r.a;
+  });
+  var turmas=Object.keys(byTurma).sort(function(a,b){return +a-+b;});
+  var tLabels=turmas.map(function(t){return 'Turma '+t;});
+  var tColors=turmas.map(function(_,i){return TURMA_PAL[i%TURMA_PAL.length];});
+  var bgColors=turmas.map(function(t,i){
+    if(selectedTurma==='all') return tColors[i];
+    return t===selectedTurma ? tColors[i] : tColors[i]+'55';
+  });
+
+  dChart('tBar');
+  CHARTS['tBar']=new Chart(document.getElementById('tChartBar'),{
+    type:'bar',
+    data:{labels:tLabels,datasets:[{data:turmas.map(function(t){return byTurma[t].r;}),backgroundColor:bgColors,borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:10},color:'#718096'},grid:{display:false}},y:{ticks:{font:{size:10},color:'#718096'},grid:{color:'#F0F4FA'}}}}
+  });
+
+  dChart('tStacked');
+  CHARTS['tStacked']=new Chart(document.getElementById('tChartStacked'),{
+    type:'bar',
+    data:{labels:tLabels,datasets:[
+      {label:'Realizado %',data:turmas.map(function(t){var b=byTurma[t],tot=b.r+b.f+b.x;return pct(b.r,tot);}),backgroundColor:'#1A2459',stack:'s',borderRadius:{topLeft:4,topRight:4}},
+      {label:'Falta %',data:turmas.map(function(t){var b=byTurma[t],tot=b.r+b.f+b.x;return pct(b.f,tot);}),backgroundColor:'#E53E3E',stack:'s'},
+      {label:'Cancelado %',data:turmas.map(function(t){var b=byTurma[t],tot=b.r+b.f+b.x;return pct(b.x,tot);}),backgroundColor:'#ED8936',stack:'s'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12,padding:12}}},
+      scales:{x:{stacked:true,ticks:{font:{size:10},color:'#718096'},grid:{display:false}},y:{stacked:true,max:100,ticks:{font:{size:10},color:'#718096',callback:function(v){return v+'%';}},grid:{color:'#F0F4FA'}}}}
+  });
+
+  var byMes={};
+  dataSelected.forEach(function(r){
+    if(!byMes[r.m]) byMes[r.m]={r:0,f:0,x:0,a:0};
+    byMes[r.m].r+=r.r; byMes[r.m].f+=r.f; byMes[r.m].x+=r.x; byMes[r.m].a+=r.a;
+  });
+  var meses=Object.keys(byMes).sort();
+  document.getElementById('tLineSubtitle').textContent = selectedTurma==='all' ? curso+' — todas as turmas' : curso+' · Turma '+selectedTurma;
+  dChart('tLine');
+  CHARTS['tLine']=new Chart(document.getElementById('tChartLine'),{
+    type:'line',
+    data:{labels:meses.map(fmtMes),datasets:[
+      {label:'Realizado',data:meses.map(function(m){return byMes[m].r;}),borderColor:'#1A2459',backgroundColor:'rgba(26,36,89,0.08)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:true},
+      {label:'Falta',data:meses.map(function(m){return byMes[m].f;}),borderColor:'#E53E3E',backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:0.3,borderDash:[4,3]},
+      {label:'Cancelado',data:meses.map(function(m){return byMes[m].x;}),borderColor:'#ED8936',backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:0.3,borderDash:[4,3]},
+      {label:'Agendado',data:meses.map(function(m){return byMes[m].a;}),borderColor:'#B8940A',backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:0.3,borderDash:[2,4]}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12,padding:16}}},
+      scales:{x:{ticks:{font:{size:9},color:'#718096',maxRotation:45},grid:{display:false}},y:{ticks:{font:{size:10},color:'#718096'},grid:{color:'#F0F4FA'}}}}
+  });
+
+  var rankData=turmas.map(function(t,i){
+    var b=byTurma[t],tot=b.r+b.f+b.x;
+    return {turma:t,r:b.r,f:b.f,x:b.x,tot:tot,pr:pct(b.r,tot),pf:pct(b.f,tot),px:pct(b.x,tot),color:tColors[i]};
+  }).sort(function(a,b){return b.pr-a.pr;});
+  var maxRt=Math.max.apply(null,rankData.map(function(d){return d.r;}));
+  var tbody=document.getElementById('tRankingBody');
+  tbody.innerHTML='';
+  rankData.forEach(function(d,i){
+    var isSel=selectedTurma!=='all'&&d.turma===selectedTurma;
+    tbody.innerHTML+='<tr style="'+(isSel?'background:#F0F4FF;':'')+'cursor:pointer" onclick="selectTurmaRow(\''+d.turma+'\')"><td class="rank-num">'+(i+1)+'</td><td><span class="curso-tag" style="background:'+d.color+'22;color:'+d.color+'">Turma '+d.turma+'</span></td><td style="font-weight:600">'+fmtN(d.r)+'</td><td style="color:#38A169;font-weight:700">'+d.pr+'%</td><td style="color:#E53E3E">'+d.pf+'%</td><td style="color:#ED8936">'+d.px+'%</td><td style="width:80px"><div class="bar-mini"><div class="bar-mini-fill" style="width:'+Math.round(d.r/maxRt*100)+'%;background:'+d.color+'"></div></div></td></tr>';
+  });
+
+  var heatData={};
+  dataAll.forEach(function(r){
+    if(!heatData[r.t]) heatData[r.t]={};
+    if(!heatData[r.t][r.m]) heatData[r.t][r.m]=0;
+    heatData[r.t][r.m]+=r.r;
+  });
+  var allM=[...new Set(dataAll.map(function(r){return r.m;}))].sort();
+  var hMax=0;
+  turmas.forEach(function(t){allM.forEach(function(m){var v=(heatData[t]||{})[m]||0;if(v>hMax)hMax=v;});});
+  var tht=document.getElementById('tHeatmap');
+  var hdr='<tr><th class="row-header">Turma</th>';
+  allM.forEach(function(m){hdr+='<th>'+fmtMes(m)+'</th>';});
+  tht.innerHTML=hdr+'</tr>';
+  turmas.forEach(function(t){
+    var isSel=selectedTurma!=='all'&&t===selectedTurma;
+    var row='<tr style="'+(isSel?'outline:2px solid #1A2459;':'')+'"><td class="row-header">Turma '+t+'</td>';
+    allM.forEach(function(m){
+      var v=(heatData[t]||{})[m]||0;
+      row+='<td style="background:'+heatBg(v,hMax)+';color:'+heatFg(v,hMax)+'" title="Turma '+t+' '+fmtMes(m)+': '+v+'">'+( v||'')+'</td>';
+    });
+    tht.innerHTML+=row+'</tr>';
+  });
+}
+
+function selectTurmaRow(t){
+  selectedTurma=t;
+  document.querySelectorAll('.turma-pill').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.turma-pill').forEach(function(p){
+    if(p.textContent.trim()==='Turma '+t) p.classList.add('active');
+  });
+  updateTurma();
+}
+
+updateGeral();
+</script>
+</body>
+</html>
