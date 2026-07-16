@@ -200,6 +200,23 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
     <div class="row full"><div class="card"><div class="ctitle">% Realizado, Falta e Cancelamento por Curso</div><div class="csub">Composição percentual (excluindo pendentes)</div><div style="position:relative;height:260px"><canvas id="gStk"></canvas></div></div></div>
     <div class="sec">Tendência Temporal</div>
     <div class="row full"><div class="card"><div class="ctitle">Tendência Mensal</div><div class="csub">Realizados, faltas, cancelamentos e agendamentos ao longo do tempo</div><div style="position:relative;height:260px"><canvas id="gLine"></canvas></div></div></div>
+    <div class="row full"><div class="card">
+      <div class="ctitle">Comparação Ano vs Ano</div>
+      <div class="csub">Realizados, faltas, cancelamentos e agendamentos por mês, comparando anos</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin:10px 0 14px">
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <button class="wpill on" onclick="setYoY('r',this)">Realizados</button>
+          <button class="wpill" onclick="setYoY('f',this)">Faltas</button>
+          <button class="wpill" onclick="setYoY('x',this)">Cancelamentos</button>
+          <button class="wpill" onclick="setYoY('a',this)">Agendamentos</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <button class="wpill on" onclick="setYoYMode('v',this)">Valores</button>
+          <button class="wpill" onclick="setYoYMode('p',this)">%</button>
+        </div>
+      </div>
+      <div style="position:relative;height:280px"><canvas id="gYoY"></canvas></div>
+    </div></div>
     <div class="sec">Ranking por Curso</div>
     <div class="row full"><div class="card"><div class="ctitle">Ranking por Curso</div><div class="csub">Ordenado por % de realização</div>
       <table class="rtable"><colgroup><col style="width:44px"><col style="width:190px"><col style="width:110px"><col><col><col><col style="width:110px"></colgroup>
@@ -521,6 +538,40 @@ function G(){
   var bU={};data.forEach(function(r){if(!bU[r.u])bU[r.u]={};if(!bU[r.u][r.c])bU[r.u][r.c]=0;bU[r.u][r.c]+=r.r;});
   var unis=Object.keys(bU).sort(),topC=cursos.slice(0,6);
   dc('gUni');CH['gUni']=new Chart(document.getElementById('gUni'),{type:'bar',data:{labels:unis,datasets:topC.map(function(c){return{label:c,data:unis.map(function(u){return(bU[u]||{})[c]||0;}),backgroundColor:CC[c]||'#1A2459',stack:'s'};})},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12,padding:14}},tooltip:{mode:'index',intersect:false}},scales:{x:{stacked:true,ticks:{font:{size:11},color:'#718096'},grid:{display:false}},y:{stacked:true,ticks:{font:{size:10},color:'#718096'},grid:{color:'#F0F4FA'}}}}});
+  drawYoY();
+}
+
+var YOY={metric:'r',mode:'v'};
+var YOYCOLORS=['#94A3B8','#F5C518','#1A2459','#3182CE','#805AD5','#38A169'];
+var yoyLabelsPlugin={id:'yoyLabels',afterDatasetsDraw:function(chart){var ctx=chart.ctx;ctx.save();ctx.font='10px Inter, -apple-system, sans-serif';ctx.textAlign='center';var offs=[-10,-24,12];chart.data.datasets.forEach(function(ds,dsIndex){var meta=chart.getDatasetMeta(dsIndex);if(meta.hidden)return;meta.data.forEach(function(point,i){var val=ds.data[i];if(val===null||val===undefined)return;ctx.fillStyle=ds.borderColor;var txt=YOY.mode==='p'?val+'%':fn(val);ctx.fillText(txt,point.x,point.y+offs[dsIndex%3]);});});ctx.restore();}};
+function setYoY(m,btn){YOY.metric=m;btn.parentNode.querySelectorAll('.wpill').forEach(function(p){p.classList.remove('on');});btn.classList.add('on');drawYoY();}
+function setYoYMode(md,btn){YOY.mode=md;btn.parentNode.querySelectorAll('.wpill').forEach(function(p){p.classList.remove('on');});btn.classList.add('on');drawYoY();}
+function drawYoY(){
+  var data=fG();
+  var byYM={};
+  data.forEach(function(r){
+    var y=r.m.slice(0,4),mo=parseInt(r.m.slice(5,7),10);
+    if(!byYM[y])byYM[y]={};
+    if(!byYM[y][mo])byYM[y][mo]={r:0,f:0,x:0,a:0};
+    byYM[y][mo].r+=r.r;byYM[y][mo].f+=r.f;byYM[y][mo].x+=r.x;byYM[y][mo].a+=r.a;
+  });
+  var years=Object.keys(byYM).sort();
+  var MN=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  var metric=YOY.metric,mode=YOY.mode;
+  var datasets=years.map(function(y,i){
+    var arr=[];
+    for(var mo=1;mo<=12;mo++){
+      var v=byYM[y][mo];
+      var val;
+      if(!v){val=null;}
+      else if(mode==='p'){var den=metric==='a'?(v.r+v.f+v.x+v.a):(v.r+v.f+v.x);val=den?Math.round(v[metric]/den*1000)/10:null;}
+      else{val=v[metric];}
+      arr.push(val);
+    }
+    return{label:y,data:arr,borderColor:YOYCOLORS[i%YOYCOLORS.length],backgroundColor:'transparent',borderWidth:2.5,pointRadius:3,tension:.3};
+  });
+  dc('gYoY');
+  CH['gYoY']=new Chart(document.getElementById('gYoY'),{type:'line',data:{labels:MN,datasets:datasets},options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22,bottom:4}},interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12,padding:16}},tooltip:{callbacks:{label:function(ctx){var v=ctx.parsed.y;if(v===null||v===undefined)return ctx.dataset.label+': —';return ctx.dataset.label+': '+(mode==='p'?v+'%':fn(v));}}}},scales:{x:{ticks:{font:{size:10},color:'#718096'},grid:{display:false}},y:{ticks:{font:{size:10},color:'#718096',callback:function(v){return mode==='p'?v+'%':v;}},grid:{color:'#F0F4FA'}}}},plugins:[yoyLabelsPlugin]});
 }
 
 /* ---- TURMA ---- */
