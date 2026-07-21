@@ -111,6 +111,27 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .toggle-group{display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;}
 .toggle-btn{padding:6px 14px;font-size:12px;font-weight:600;color:var(--muted);background:transparent;border:none;cursor:pointer;font-family:inherit;transition:all .15s;}
 .toggle-btn.on{background:var(--navy);color:#fff;}
+.odot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;}
+.olegend{display:flex;gap:18px;align-items:center;font-size:11px;color:var(--muted);margin-bottom:14px;flex-wrap:wrap;}
+.ocards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+.ocard{border:1px solid var(--border);border-radius:12px;padding:16px 18px;background:#fff;}
+.ocard-head{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.ocard-title{font-size:13px;font-weight:700;color:var(--navy);}
+.ocard-badges{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.ocard-u{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:#E6F0FF;color:#2B6CB0;white-space:nowrap;}
+.ocard-trend{font-size:13px;font-weight:800;}
+.ocard-mod{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:2px 0 14px;}
+.ocard-dates{display:grid;gap:8px;margin-bottom:12px;}
+.ocard-dlbl{font-size:10px;color:var(--muted);text-align:center;margin-bottom:5px;}
+.ocard-box{border-radius:8px;padding:11px 4px;text-align:center;color:#fff;font-size:15px;font-weight:800;}
+.ocard-rs{font-size:10px;color:var(--muted);text-align:center;margin-top:5px;}
+.ocard-foot{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:10px;}
+.ocard-foot b{color:var(--navy);}
+.ocard-foot2{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding-top:8px;margin-top:8px;border-top:1px dashed var(--border);}
+.ocard-filters{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.ocard-filters .fg{flex-direction:column;align-items:flex-start;gap:6px;}
+.ocard-filters .fg select{background-image:none;padding:6px 8px;min-width:160px;}
+.ocard-filters .fghint{font-size:10px;color:var(--muted);flex-basis:100%;}
 </style>
 </head>
 <body>
@@ -444,6 +465,49 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
   </div>
   <div class="main">
     <div class="csub" style="margin-bottom:14px">Cruza o Realizado (base de atendimentos) com os Slots Ofertados (checklist de captação) por turma e data de prática. Cobre o período com dados de slots disponíveis (Mai–Set/2026).</div>
+    <div class="sec">Detalhamento</div>
+    <div class="row full"><div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+        <div><div class="ctitle" style="margin-bottom:4px">Realizado vs Slots Ofertado</div><div class="csub" style="margin-bottom:0" id="oDetailSub">Cada card mostra até as 3 práticas mais recentes dentro do período filtrado</div></div>
+        <div class="toggle-group" style="flex-shrink:0">
+          <button class="toggle-btn" id="oViewTable" onclick="setODetailView('table',this)">Tabela</button>
+          <button class="toggle-btn on" id="oViewCards" onclick="setODetailView('cards',this)">Cards</button>
+        </div>
+      </div>
+      <div id="oTableWrap" style="display:none">
+      <table class="rtable" id="oTable" style="table-layout:auto">
+        <thead id="oHead"></thead>
+        <tbody id="oBody"></tbody>
+      </table>
+      </div>
+      <div id="oCardsWrap">
+        <div class="ocard-filters">
+          <div class="fg"><label>Unidade (múltiplo)</label><select id="oCardU" multiple size="4" onchange="oCardCascade()">
+            <option>Brasília</option><option>Campinas</option><option>Online</option><option>São Paulo</option>
+          </select></div>
+          <div class="fg"><label>Mês (múltiplo)</label><select id="oCardM" multiple size="4" onchange="oCardCascade()"></select></div>
+          <div class="fg"><label>Semana do mês (múltiplo)</label><select id="oCardW" multiple size="5" onchange="oCardCascade()">
+            <option value="1">Semana 1</option><option value="2">Semana 2</option><option value="3">Semana 3</option><option value="4">Semana 4</option><option value="5">Semana 5</option>
+          </select></div>
+          <div class="fg"><label>Data da prática (múltiplo)</label><select id="oCardD" multiple size="4" onchange="renderOCards(applyOCardFilters(oLastData))"></select></div>
+          <div class="fg" style="justify-content:flex-end">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap;font-weight:600">
+              <input type="checkbox" id="oCardHideFuture" checked onchange="oCardCascade()" style="cursor:pointer">
+              Ocultar dias que ainda não aconteceram
+            </label>
+          </div>
+          <div class="fg" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn-r" style="margin-left:0" onclick="resetOCardFilters()">&#8635; Limpar filtros de cards</button></div>
+          <div class="fghint">Ctrl/Cmd + clique para selecionar mais de uma opção em cada filtro.</div>
+        </div>
+        <div class="olegend">
+          <span><i class="odot" style="background:#38A169"></i>&ge; 85%</span>
+          <span><i class="odot" style="background:#ED8936"></i>50&ndash;85%</span>
+          <span><i class="odot" style="background:#E53E3E"></i>&lt; 50%</span>
+          <span style="margin-left:auto">Tend&ecirc;ncia: <b style="color:#38A169">&#8593; Crescendo</b> &middot; <b style="color:#E53E3E">&#8595; Caindo</b> &middot; <b style="color:var(--muted)">&#8594; Est&aacute;vel</b></span>
+        </div>
+        <div class="ocards-grid" id="oCardsGrid"></div>
+      </div>
+    </div></div>
     <div class="sec">Resumo Executivo</div>
     <div class="row full"><div class="card">
       <div class="ctitle">Panorama por Curso</div>
@@ -464,13 +528,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
     </div>
     <div class="sec">Ocupação Real por Turma</div>
     <div class="row full"><div class="card"><div class="ctitle">Ocupação Real (%) por Turma</div><div class="csub">Realizado ÷ Slots ofertados no período filtrado</div><div style="position:relative;height:320px"><canvas id="oBar"></canvas></div></div></div>
-    <div class="sec">Detalhamento</div>
-    <div class="row full"><div class="card"><div class="ctitle">Realizado vs Slots Ofertado</div><div class="csub">Clique no cabeçalho para ordenar</div>
-      <table class="rtable" id="oTable" style="table-layout:auto">
-        <thead id="oHead"></thead>
-        <tbody id="oBody"></tbody>
-      </table>
-    </div></div>
+
   </div>
 </div>
 
@@ -523,13 +581,13 @@ var SLOTSX=SLOTS.map(function(s){
 var MESES_O=[...new Set(SLOTSX.map(function(r){return r.mo;}))].sort();
 MESES_O.forEach(function(m){
   var l=fm(m);
-  ['oM'].forEach(function(id){var o=document.createElement('option');o.value=m;o.textContent=l;document.getElementById(id).appendChild(o);});
+  ['oM','oCardM'].forEach(function(id){var o=document.createElement('option');o.value=m;o.textContent=l;document.getElementById(id).appendChild(o);});
   ['oS','oE'].forEach(function(id){var o=document.createElement('option');o.value=m;o.textContent=l;document.getElementById(id).appendChild(o);});
 });
 var oGroup='turma',oSortCol='pOc',oSortDir=1,oExpandedKey=null,oLastData=[],oLastRows=[];
 function setOGroup(g,btn){oGroup=g;oExpandedKey=null;btn.parentNode.querySelectorAll('.toggle-btn').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');O();}
 function onMonthO(){var m=document.getElementById('oM').value;document.getElementById('oS').value=m;document.getElementById('oE').value=m;if(!m){document.getElementById('oS').value='';document.getElementById('oE').value='';}O();}
-function resetO(){['oU','oC','oM','oS','oE'].forEach(function(id){document.getElementById(id).value='';});document.getElementById('oMeta').value='70';document.getElementById('oHideEmpty').checked=true;oGroup='turma';oExpandedKey=null;document.querySelectorAll('#po .toggle-btn').forEach(function(b,i){b.classList.toggle('on',i===0);});O();}
+function resetO(){['oU','oC','oM','oS','oE'].forEach(function(id){document.getElementById(id).value='';});document.getElementById('oMeta').value='70';document.getElementById('oHideEmpty').checked=true;oGroup='turma';oExpandedKey=null;document.getElementById('oByTurma').classList.add('on');document.getElementById('oByData').classList.remove('on');setODetailView('cards',document.getElementById('oViewCards'));resetOCardFilters(true);O();}
 function fO(){
   var u=document.getElementById('oU').value,c=document.getElementById('oC').value,s=document.getElementById('oS').value,e=document.getElementById('oE').value;
   return SLOTSX.filter(function(r){return(!u||r.u===u)&&(!c||r.c===c)&&(!s||r.mo>=s)&&(!e||r.mo<=e);});
@@ -568,6 +626,8 @@ function O(){
   CH['oBar']=new Chart(document.getElementById('oBar'),{type:'bar',data:{labels:turmaRows.map(function(d){return d.label;}),datasets:[{data:turmaRows.map(function(d){return d.pOc;}),backgroundColor:turmaRows.map(function(d){return d.pOc>=65?'#38A169':d.pOc>=50?'#ED8936':'#E53E3E';}),borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.x+'% ('+fn(turmaRows[ctx.dataIndex].r)+' de '+fn(turmaRows[ctx.dataIndex].s)+' slots)';}}}},scales:{x:{max:100,ticks:{font:{size:10},color:'#718096',callback:function(v){return v+'%';}},grid:{color:'#F0F4FA'}},y:{ticks:{font:{size:10},color:'#718096'},grid:{display:false}}}}});
   oLastRows=rows;
   renderOTable(rows);
+  populateOCardDateOptions(applyOCardFilters(oLastData,true));
+  renderOCards(applyOCardFilters(oLastData));
 }
 var oExecSortCol='pOc',oExecSortDir=1,oExecLastRows=[],oExecLastMeta=70;
 function renderExecSummary(rows,meta){
@@ -673,6 +733,93 @@ function drillRowHtml(d,colspan){
 }
 function toggleODrill(key){oExpandedKey=(oExpandedKey===key)?null:key;renderOTable(oLastRows);}
 function sortO(col){if(oSortCol===col)oSortDir*=-1;else{oSortCol=col;oSortDir=col==='pOc'?1:-1;}O();}
+var oDetailView='cards';
+function setODetailView(v,btn){
+  oDetailView=v;
+  document.getElementById('oViewTable').classList.toggle('on',v==='table');
+  document.getElementById('oViewCards').classList.toggle('on',v==='cards');
+  document.getElementById('oTableWrap').style.display=v==='table'?'':'none';
+  document.getElementById('oCardsWrap').style.display=v==='cards'?'':'none';
+  document.getElementById('oDetailSub').textContent=v==='table'?'Clique no cabeçalho para ordenar':'Cada card mostra até as 3 práticas mais recentes dentro do período filtrado';
+}
+var UCODE_O={'Campinas':'CPS','São Paulo':'SP','Brasília':'BSB','Online':'ONL'};
+function oTier(p){return p>=85?'#38A169':p>=50?'#ED8936':'#E53E3E';}
+function fdShort(iso){var p=iso.split('-');return p[2]+'/'+p[1];}
+function padT(t){t=''+t;return t.length<2?'0'+t:t;}
+function selVals(id){var el=document.getElementById(id);return el?Array.prototype.slice.call(el.selectedOptions).map(function(o){return o.value;}):[];}
+function weekOfMonthISO(iso){var day=+iso.slice(8,10);return Math.ceil(day/7);}
+function populateOCardDateOptions(data){
+  var sel=document.getElementById('oCardD');
+  var prev=selVals('oCardD');
+  var dates=Array.from(new Set(data.map(function(r){return r.d;}))).sort();
+  sel.innerHTML=dates.map(function(d){return '<option value="'+d+'"'+(prev.indexOf(d)>-1?' selected':'')+'>'+fd(d)+'</option>';}).join('');
+}
+function applyOCardFilters(data,skipDate){
+  var us=selVals('oCardU'),ms=selVals('oCardM'),ws=selVals('oCardW'),ds=skipDate?[]:selVals('oCardD');
+  var hfEl=document.getElementById('oCardHideFuture'),hideFuture=hfEl?hfEl.checked:false;
+  var today=new Date().toISOString().slice(0,10);
+  return data.filter(function(r){
+    if(hideFuture&&r.d>today)return false;
+    if(us.length&&us.indexOf(r.u)===-1)return false;
+    if(ms.length&&ms.indexOf(r.mo)===-1)return false;
+    if(ws.length&&ws.indexOf(''+weekOfMonthISO(r.d))===-1)return false;
+    if(ds.length&&ds.indexOf(r.d)===-1)return false;
+    return true;
+  });
+}
+function oCardCascade(){
+  populateOCardDateOptions(applyOCardFilters(oLastData,true));
+  renderOCards(applyOCardFilters(oLastData));
+}
+function resetOCardFilters(skipRender){
+  ['oCardU','oCardM','oCardW','oCardD'].forEach(function(id){var el=document.getElementById(id);if(el)Array.prototype.forEach.call(el.options,function(o){o.selected=false;});});
+  var hfEl=document.getElementById('oCardHideFuture');if(hfEl)hfEl.checked=true;
+  populateOCardDateOptions(oLastData);
+  if(!skipRender)renderOCards(applyOCardFilters(oLastData));
+}
+function renderOCards(data){
+  var grid=document.getElementById('oCardsGrid');
+  var todayISO=new Date().toISOString().slice(0,10);
+  var groups={};
+  data.forEach(function(r){
+    var key=r.u+'||'+r.c+'||'+r.t;
+    if(!groups[key])groups[key]=[];
+    groups[key].push(r);
+  });
+  var cards=Object.keys(groups).map(function(k){
+    var arr=groups[k].slice().sort(function(a,b){return a.d<b.d?-1:a.d>b.d?1:0;});
+    var past=arr.filter(function(r){return r.d<=todayISO;});
+    var last3=(past.length?past:arr).slice(-3);
+    var sumR=0,sumS=0,sumF=0,sumX=0;
+    last3.forEach(function(r){sumR+=r.r;sumS+=r.s;sumF+=r.f;sumX+=r.x;});
+    var avg=pc(sumR,sumS);
+    var occ=sumR+sumF+sumX;
+    var pctF=pc(sumF,occ),pctX=pc(sumX,occ);
+    var pts=last3.map(function(r){return{d:r.d,md:r.md,r:r.r,s:r.s,p:pc(r.r,r.s)};});
+    var trend='eq',diff=0;
+    if(pts.length>=2){diff=pts[pts.length-1].p-pts[0].p;trend=diff>2?'up':diff<-2?'down':'eq';}
+    var g=groups[k][0];
+    return{u:g.u,c:g.c,t:g.t,md:last3[last3.length-1].md,avg:avg,n:pts.length,pts:pts,trend:trend,sumS:sumS,sumF:sumF,sumX:sumX,pctF:pctF,pctX:pctX};
+  }).filter(function(cd){return cd.sumS>0;}).sort(function(a,b){return a.avg-b.avg;});
+  if(!cards.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:24px">Nenhum dado no período/filtro selecionado.</div>';return;}
+  var TRENDI={up:{arr:'&#8593;',lbl:'Crescendo',col:'#38A169'},down:{arr:'&#8595;',lbl:'Caindo',col:'#E53E3E'},eq:{arr:'&#8594;',lbl:'Estável',col:'#718096'}};
+  grid.innerHTML=cards.map(function(cd){
+    var ti=TRENDI[cd.trend];
+    var ucode=UCODE_O[cd.u]||cd.u;
+    var boxes=cd.pts.map(function(p){
+      return '<div><div class="ocard-dlbl">'+fdShort(p.d)+'</div><div class="ocard-box" style="background:'+oTier(p.p)+'">'+Math.round(p.p)+'%</div><div class="ocard-rs">'+fn(p.r)+'/'+fn(p.s)+'</div></div>';
+    }).join('');
+    return '<div class="ocard">'
+      +'<div class="ocard-head"><div class="ocard-title">'+cd.c+' '+ucode+' T'+padT(cd.t)+'</div>'
+      +'<div class="ocard-badges"><span class="ocard-u">'+ucode+'</span><span class="ocard-trend" style="color:'+ti.col+'">'+ti.arr+'</span></div></div>'
+      +'<div class="ocard-mod" title="'+(cd.md||'').replace(/"/g,'&quot;')+'">'+(cd.md||'&nbsp;')+'</div>'
+      +'<div class="ocard-dates" style="grid-template-columns:repeat('+cd.n+',1fr)">'+boxes+'</div>'
+      +'<div class="ocard-foot"><span>'+cd.n+' dia'+(cd.n===1?'':'s')+' &middot; Média: <b>'+cd.avg+'%</b></span>'
+      +'<span style="color:'+ti.col+';font-weight:700">'+ti.arr+' '+ti.lbl+'</span></div>'
+      +'<div class="ocard-foot2"><span>Faltas (no-show): <b style="color:#E53E3E">'+cd.pctF+'%</b> ('+fn(cd.sumF)+')</span><span>Cancelados: <b style="color:#ED8936">'+cd.pctX+'%</b> ('+fn(cd.sumX)+')</span></div>'
+      +'</div>';
+  }).join('');
+}
 
 // Week section control
 function showWeekBar(tab){
